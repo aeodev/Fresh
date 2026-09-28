@@ -1,0 +1,11 @@
+node_modules
+dist
+.wrangler
+.dev.vars
+.env
+*.log
+.DS_Store
+sidebar-app/dist
+sidebar-app/.fdk
+sidebar-app/node_modules
+sidebar-app/coverage

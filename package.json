@@ -1,0 +1,40 @@
+{
+  "name": "freshqa-v2",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n worker,ui \"wrangler dev --port 8787\" \"vite --port 5173\"",
+    "build": "vite build",
+    "start": "npm run build && wrangler dev --port 8787",
+    "deploy": "npm run build && wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply freshqa --local",
+    "db:migrate:remote": "wrangler d1 migrations apply freshqa --remote",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "db:reset": "rm -rf .wrangler/state && wrangler d1 migrations apply freshqa --local",
+    "mock:freshchat": "node scripts/mock-freshchat.mjs"
+  },
+  "dependencies": {
+    "hono": "^4.13.10",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^7.18.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260928.1",
+    "@eslint/js": "^10.0.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2",
+    "wrangler": "^4.143.0"
+  }
+}

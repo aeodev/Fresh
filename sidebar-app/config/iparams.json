@@ -1,0 +1,16 @@
+{
+  "freshqa_host": {
+    "display_name": "FreshQA address",
+    "description": "Your FreshQA host without https://, for example freshqa.example.com or abc.trycloudflare.com. Shown in Settings → Freshchat sidebar.",
+    "type": "text",
+    "required": true,
+    "secure": false
+  },
+  "freshqa_token": {
+    "display_name": "FreshQA Companion token",
+    "description": "Issue one in FreshQA → Settings → Freshchat sidebar. It identifies your company and is never shown again.",
+    "type": "text",
+    "required": true,
+    "secure": true
+  }
+}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>FreshQA</title>
+    <link rel="stylesheet" href="styles/style.css" />
+  </head>
+  <body>
+    <main id="root" class="shell">
+      <header class="top">
+        <strong id="company">FreshQA</strong>
+        <span id="mode" class="pill">…</span>
+        <button id="refresh" class="icon" type="button" title="Refresh">↻</button>
+      </header>
+
+      <section id="loading" class="state">Loading…</section>
+      <section id="error" class="state error" hidden><strong>FreshQA is unavailable</strong><p id="error-text"></p></section>
+
+      <section id="body" hidden>
+        <div class="status">
+          <span id="state" class="pill">—</span>
+          <p id="state-reason" class="muted"></p>
+        </div>
+
+        <div id="turn" class="turn" hidden>
+          <div class="turn-head"><span id="turn-decision" class="pill"></span><span id="turn-confidence" class="muted small"></span></div>
+          <p id="turn-answer"></p>
+          <p id="turn-reason" class="muted small"></p>
+        </div>
+
+        <div class="actions">
+          <button id="takeover" class="primary" type="button" data-action="takeover" hidden>Take over</button>
+          <button id="handback" class="primary" type="button" data-action="handback" hidden>Hand back to agent</button>
+          <button id="reply-now" type="button" data-action="reply_now" hidden>Reply now</button>
+        </div>
+        <p class="muted small" id="hint"></p>
+        <a id="open" class="link" href="#" target="_blank" rel="noreferrer">Open in FreshQA ↗</a>
+      </section>
+      <div id="toast" class="toast" role="status" hidden></div>
+    </main>
+    <script src="{{{appclient}}}"></script>
+    <script src="scripts/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+# Copy to .dev.vars for local `wrangler dev`. In production set these with `wrangler secret put <NAME>`.
+
+# Required for answers, embeddings, and golden tests.
+OPENAI_API_KEY=sk-...
+# Optional model overrides.
+OPENAI_ANSWER_MODEL=gpt-5.6-luna
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# 32 random bytes, base64. Encrypts Freshchat API keys at rest. Generate: openssl rand -base64 32
+ENCRYPTION_KEY=
+
+# Optional: send invite emails through Resend. Without it the invite link is shown in the UI to copy.
+RESEND_API_KEY=
+EMAIL_FROM=FreshQA <noreply@example.com>
+
+# Public base URL of this deployment (used in invite links and the Freshchat setup screen).
+# Local: your tunnel URL, e.g. https://xyz.trycloudflare.com
+PUBLIC_BASE_URL=http://localhost:8787

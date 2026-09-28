@@ -1,0 +1,28 @@
+{
+  "platform-version": "3.1",
+  "modules": {
+    "common": {
+      "requests": {
+        "getConversationState": { "maxAttempts": 2, "retryDelay": 300 },
+        "postConversationAction": { "maxAttempts": 1 },
+        "postFreshqaEvent": { "maxAttempts": 3, "retryDelay": 500 },
+        "postFreshqaInstall": { "maxAttempts": 2, "retryDelay": 500 }
+      },
+      "events": {
+        "onAppInstall": { "handler": "onAppInstallCallback" },
+        "afterAppUpdate": { "handler": "afterAppUpdateCallback" }
+      }
+    },
+    "chat_conversation": {
+      "location": {
+        "conversation_user_info": { "url": "index.html", "icon": "styles/images/icon.svg" }
+      },
+      "events": {
+        "onConversationCreate": { "handler": "onConversationCreateCallback" },
+        "onConversationUpdate": { "handler": "onConversationUpdateCallback" },
+        "onMessageCreate": { "handler": "onMessageCreateCallback" }
+      }
+    }
+  },
+  "engines": { "node": "24.11.0", "fdk": "10.1.9" }
+}

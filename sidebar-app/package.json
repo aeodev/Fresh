@@ -1,0 +1,10 @@
+{
+  "name": "freshqa-sidebar",
+  "version": "2.0.0",
+  "private": true,
+  "description": "FreshQA sidebar for the Freshchat Team Inbox: shows who owns the chat and lets agents take over or hand back.",
+  "scripts": {
+    "validate": "fdk validate",
+    "pack": "fdk pack --skip-coverage"
+  }
+}

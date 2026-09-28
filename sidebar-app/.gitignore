@@ -1,0 +1,4 @@
+dist
+.fdk
+node_modules
+coverage

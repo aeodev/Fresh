@@ -1,0 +1,25 @@
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1c211f; background: #fff; }
+.shell { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.top { display: flex; align-items: center; gap: 8px; }
+.top strong { flex: 1; font-size: 15px; }
+.icon { border: 1px solid #e3e6e2; background: #fff; border-radius: 6px; width: 28px; height: 28px; cursor: pointer; }
+.state { padding: 12px; border-radius: 8px; background: #f6f7f5; color: #6b736f; }
+.state.error { background: #fbe9e7; color: #b4392f; }
+.state p { margin: 4px 0 0; }
+.status p { margin: 4px 0 0; }
+.muted { color: #6b736f; }
+.small { font-size: 12px; }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #eef0ee; color: #6b736f; }
+.pill.live, .pill.agent, .pill.sent { background: #e4f1ec; color: #1f6f5b; }
+.pill.shadow, .pill.human, .pill.handoff { background: #fff4d6; color: #9a6400; }
+.pill.error { background: #fbe9e7; color: #b4392f; }
+.turn { border: 1px solid #e3e6e2; border-radius: 8px; padding: 10px; }
+.turn-head { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.turn p { margin: 0 0 4px; white-space: pre-wrap; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button { font: inherit; font-weight: 600; padding: 8px 12px; border-radius: 8px; border: 1px solid #e3e6e2; background: #fff; cursor: pointer; }
+button.primary { background: #1f6f5b; border-color: #1f6f5b; color: #fff; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+.link { color: #1f6f5b; font-weight: 600; text-decoration: none; font-size: 13px; }
+.toast { position: fixed; left: 12px; right: 12px; bottom: 12px; background: #1c211f; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 13px; }

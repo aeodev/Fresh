@@ -1,0 +1,54 @@
+{
+  "getConversationState": {
+    "schema": {
+      "method": "GET",
+      "host": "<%= iparam.freshqa_host %>",
+      "path": "/api/sidebar/conversation",
+      "query": { "conversationId": "<%= context.conversationId %>" },
+      "headers": {
+        "Accept": "application/json",
+        "Authorization": "Bearer <%= iparam.freshqa_token %>",
+        "ngrok-skip-browser-warning": "1"
+      }
+    }
+  },
+  "postConversationAction": {
+    "schema": {
+      "method": "POST",
+      "host": "<%= iparam.freshqa_host %>",
+      "path": "/api/sidebar/conversation",
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <%= iparam.freshqa_token %>",
+        "ngrok-skip-browser-warning": "1"
+      }
+    }
+  },
+  "postFreshqaEvent": {
+    "schema": {
+      "method": "POST",
+      "host": "<%= iparam.freshqa_host %>",
+      "path": "/api/sidebar/events",
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <%= iparam.freshqa_token %>",
+        "ngrok-skip-browser-warning": "1"
+      }
+    }
+  },
+  "postFreshqaInstall": {
+    "schema": {
+      "method": "POST",
+      "host": "<%= iparam.freshqa_host %>",
+      "path": "/api/sidebar/install",
+      "headers": {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <%= iparam.freshqa_token %>",
+        "ngrok-skip-browser-warning": "1"
+      }
+    }
+  }
+}
