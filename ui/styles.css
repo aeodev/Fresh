@@ -106,8 +106,8 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
 .account > button:hover, .account > button[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--line-2); border: 0; }
 .account .menu { position: absolute; top: calc(100% + 8px); right: 0; min-width: 260px; background: #fff; border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg); padding: 0.4rem; z-index: 40; animation: rise 0.18s ease both; }
 .account .menu .me { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.65rem; }
-.account .menu .me strong { display: block; font-size: 0.95rem; }
-.account .menu .me span { display: block; color: var(--mute); font-size: 0.8rem; }
+.account .menu .me .grow strong { display: block; font-size: 0.95rem; }
+.account .menu .me .grow span { display: block; color: var(--mute); font-size: 0.8rem; }
 .account .menu .sep { height: 1px; background: var(--line); margin: 0.35rem 0; }
 .account .menu a, .account .menu button { display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.55rem 0.65rem; border-radius: var(--r-sm); font-weight: 600; font-size: 0.92rem; color: var(--ink); background: transparent; border: 0; min-height: 0; justify-content: flex-start; box-shadow: none; }
 .account .menu a:hover, .account .menu button:hover { background: var(--paper-2); border: 0; }
