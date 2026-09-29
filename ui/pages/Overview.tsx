@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import type { AgentMode, AgentSettings, ConversationRow, FreshchatConnection } from "../../shared/types";
 import { api, timeAgo } from "../api";
 import { Avatar, Chip, EmptyState, Icon, PageHeader, Ring, useToast, type IconName } from "../components/ui";
@@ -8,6 +8,7 @@ import { useCompany } from "./Company";
 export function Overview() {
   const { company, allowed, reload } = useCompany();
   const toast = useToast();
+  const navigate = useNavigate();
   const [attention, setAttention] = useState<ConversationRow[] | null>(null);
   const [connection, setConnection] = useState<FreshchatConnection | null>(null);
   const [switching, setSwitching] = useState(false);
@@ -94,12 +95,13 @@ export function Overview() {
           </div>
           <ul className="checklist">
             {steps.map((step) => (
-              <li key={step.label} className={step.done ? "done" : ""}>
+              <li key={step.label} className={step.done ? "done" : ""} onClick={() => navigate(step.to)} style={{ cursor: "pointer" }} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") navigate(step.to); }}>
                 <span className={`mark ${step.done ? "done" : ""}`}><Icon name="check" /></span>
-                <div>
-                  <Link to={step.to} className="title" style={{ color: step.done ? undefined : "var(--ink)" }}>{step.label}</Link>
+                <div className="grow">
+                  <span className="title" style={{ color: step.done ? undefined : "var(--ink)" }}>{step.label}</span>
                   <div className="muted small">{step.hint}</div>
                 </div>
+                {!step.done && <Icon name="arrowRight" size={16} className="subtle" />}
               </li>
             ))}
           </ul>
@@ -112,7 +114,7 @@ export function Overview() {
             <table>
               <tbody>
                 {attention.map((c) => (
-                  <tr key={c.id} className="clickable" onClick={() => (window.location.href = `${base}/conversations/${encodeURIComponent(c.id)}`)}>
+                  <tr key={c.id} className="clickable" onClick={() => navigate(`${base}/conversations/${encodeURIComponent(c.id)}`)}>
                     <td style={{ width: 44 }}><Avatar name={c.customerName || c.id} /></td>
                     <td><strong>{c.customerName || c.id.slice(0, 8)}</strong><div className="muted small truncate" style={{ maxWidth: 260 }}>{c.stateReason}</div></td>
                     <td className="muted small" style={{ whiteSpace: "nowrap", textAlign: "right" }}>{timeAgo(c.updatedAt)}{c.needsAttention && <div><Chip tone="warn">attention</Chip></div>}</td>
