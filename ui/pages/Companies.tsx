@@ -2,12 +2,13 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import type { CompanySummary } from "../../shared/types";
 import { api } from "../api";
+import { AccountMenu } from "../components/AccountMenu";
 import { Alert, Avatar, Chip, Icon, Orb, Skeleton, greeting } from "../components/ui";
 import { useSession } from "../session";
 import { modeLabel } from "./Company";
 
 export function Companies() {
-  const { user, logout } = useSession();
+  const { user } = useSession();
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<CompanySummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,10 +40,7 @@ export function Companies() {
     <div>
       <header className="bar">
         <span className="brand"><span className="mark">Q</span>FreshQA</span>
-        <div className="right">
-          {user && <span className="mute small">{user.email}</span>}
-          <button type="button" className="ghost icon" title="Sign out" onClick={() => void logout()}><Icon name="logout" size={17} /></button>
-        </div>
+        <div className="right"><AccountMenu /></div>
       </header>
       <main className="main page">
         <div className="head">

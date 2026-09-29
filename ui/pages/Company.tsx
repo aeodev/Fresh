@@ -3,8 +3,8 @@ import { Link, NavLink, Outlet, useParams } from "react-router";
 import { can, type Permission } from "../../shared/rbac";
 import type { CompanyDetail, CompanySummary } from "../../shared/types";
 import { api } from "../api";
+import { AccountMenu } from "../components/AccountMenu";
 import { Alert, Avatar, Icon, type IconName } from "../components/ui";
-import { useSession } from "../session";
 
 type CompanyContextValue = { company: CompanyDetail; reload: () => Promise<void>; allowed: (permission: Permission) => boolean };
 const CompanyContext = createContext<CompanyContextValue | null>(null);
@@ -28,7 +28,6 @@ const NAV: Array<{ to: string; label: string; icon: IconName; end?: boolean }> =
 
 export function Company() {
   const { slug = "" } = useParams();
-  const { user, logout } = useSession();
   const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [others, setOthers] = useState<CompanySummary[]>([]);
   const [menu, setMenu] = useState(false);
@@ -93,8 +92,7 @@ export function Company() {
         </nav>
         <div className="right">
           <Link className="btn sm" to={`/c/${slug}/test`}><Icon name="flask" /> Try the agent</Link>
-          {user && <Avatar name={user.name} size="sm" />}
-          <button type="button" className="ghost icon" title="Sign out" onClick={() => void logout()}><Icon name="logout" size={17} /></button>
+          <AccountMenu />
         </div>
       </header>
       <main className="main page" key={slug}>
