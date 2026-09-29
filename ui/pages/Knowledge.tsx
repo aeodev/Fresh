@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 import type { GoldenTest, KnowledgeDoc, KnowledgeVersion } from "../../shared/types";
-import { api, formatDate } from "../api";
+import { api, formatDate, formatShort } from "../api";
 import { Alert, Chip, EmptyState, Icon, PageHead, Ring, Skeleton, useToast } from "../components/ui";
 import { useCompany } from "./Company";
 
@@ -68,7 +68,7 @@ export function Knowledge() {
           {versions.map((v) => (
             <button key={v.id} type="button" className={`vcard ${selected === v.id ? "on" : ""}`} onClick={() => setSelected(v.id)}>
               <div className="t"><strong>Version {v.number}</strong><Chip tone={v.status} dot={v.status === "active"}>{v.status}</Chip></div>
-              <div className="m">{v.docCount} doc{v.docCount === 1 ? "" : "s"} · {v.chunkCount} chunks · {v.status === "active" ? `live since ${formatDate(v.activatedAt)}` : formatDate(v.createdAt)}</div>
+              <div className="m"><span>{v.docCount} doc{v.docCount === 1 ? "" : "s"} · {v.chunkCount} chunks</span><span>{v.status === "active" ? `Live since ${formatShort(v.activatedAt)}` : v.status === "draft" ? `Started ${formatShort(v.createdAt)}` : `Archived · ${formatShort(v.createdAt)}`}</span></div>
             </button>
           ))}
         </aside>

@@ -310,12 +310,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* ============ Knowledge ============ */
 .kb { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1.5rem; align-items: start; }
-.vcard { display: block; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: var(--r); padding: 1rem 1.1rem; background: #fff; margin-bottom: 0.6rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+.vcard { display: block; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: var(--r); padding: 1rem 1.1rem; background: #fff; margin-bottom: 0.6rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; white-space: normal; font-weight: 400; min-height: 0; line-height: 1.45; }
 .vcard:hover { border-color: var(--line-2); }
 .vcard.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
 .vcard .t { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
 .vcard .t strong { font-size: 1rem; }
-.vcard .m { color: var(--mute); font-size: 0.82rem; }
+.vcard .m { color: var(--mute); font-size: 0.82rem; font-weight: 500; display: flex; flex-direction: column; gap: 0.1rem; }
 .doc { display: flex; gap: 1rem; align-items: center; padding: 0.95rem 1.1rem; border: 1px solid var(--line); border-radius: var(--r); background: #fff; }
 .doc .ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; background: var(--paper-2); color: var(--ink-2); }
 .doc .ico svg { width: 18px; height: 18px; }

@@ -37,3 +37,8 @@ export function timeAgo(iso: string | null | undefined) {
 export function formatDate(iso: string | null | undefined) {
   return iso ? new Date(iso).toLocaleString() : "—";
 }
+
+/** "Sep 29, 1:54 PM" */
+export function formatShort(iso: string | null | undefined) {
+  return iso ? new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
+}
