@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api";
+import { Alert, Avatar, Icon } from "../components/ui";
 import { useSession } from "../session";
 
 export function Invite() {
@@ -28,22 +29,22 @@ export function Invite() {
 
   const next = encodeURIComponent(`/invite/${token}`);
   return (
-    <div className="page-center">
-      <div className="auth-card">
-        <h1>Team invite</h1>
-        {error && <div className="alert error">{error}</div>}
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "1rem" }}>
+      <div className="card page" style={{ maxWidth: 440, width: "100%", textAlign: "center" }}>
+        {invite && <div style={{ display: "grid", placeItems: "center", marginBottom: "0.8rem" }}><Avatar name={invite.companyName} size="lg" /></div>}
+        <h1>{invite ? `Join ${invite.companyName}` : "Team invite"}</h1>
+        {error && <div style={{ marginTop: "1rem", textAlign: "left" }}><Alert tone="error">{error}</Alert></div>}
         {invite && (
           <>
-            <p>You are invited to join <strong>{invite.companyName}</strong> as <strong>{invite.role}</strong>.</p>
-            <p className="muted small">Sent to {invite.email}.</p>
+            <p className="muted" style={{ margin: "0.4rem 0 1.2rem" }}>You are invited as <strong>{invite.role}</strong>. Sent to {invite.email}.</p>
             {loading ? null : user ? (
               user.email.toLowerCase() === invite.email ? (
-                <button className="primary" disabled={busy} onClick={() => void accept()}>{busy ? "Joining…" : "Accept and join"}</button>
+                <button className="primary" disabled={busy} onClick={() => void accept()}>{busy ? "Joining…" : <><Icon name="check" /> Accept and join</>}</button>
               ) : (
-                <div className="alert warn">You are signed in as {user.email}. Sign in with {invite.email} to accept.</div>
+                <Alert tone="warn">You are signed in as {user.email}. Sign in with {invite.email} to accept.</Alert>
               )
             ) : (
-              <div className="row">
+              <div className="row" style={{ justifyContent: "center" }}>
                 <Link className="btn primary" to={`/signup?next=${next}`}>Create account</Link>
                 <Link className="btn" to={`/login?next=${next}`}>Sign in</Link>
               </div>

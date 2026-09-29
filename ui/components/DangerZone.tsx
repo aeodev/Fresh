@@ -2,22 +2,23 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../api";
 import { useCompany } from "../pages/Company";
+import { Icon, useToast } from "./ui";
 
 export function DangerZone() {
   const { company, allowed, reload } = useCompany();
   const navigate = useNavigate();
+  const toast = useToast();
   const base = `/api/companies/${company.slug}`;
   const [name, setName] = useState(company.name);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const wrap = async (fn: () => Promise<unknown>) => {
+  const wrap = async (fn: () => Promise<unknown>, done?: string) => {
     setBusy(true);
-    setError(null);
     try {
       await fn();
+      if (done) toast.success(done);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      toast.error(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }
@@ -25,18 +26,22 @@ export function DangerZone() {
 
   return (
     <div className="card">
-      <h2>Company</h2>
-      {error && <div className="alert error">{error}</div>}
+      <div className="card-header">
+        <div className="row" style={{ gap: "0.8rem" }}>
+          <span className="tile-ico tone-gray" style={{ width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center" }}><Icon name="building" /></span>
+          <div><h2>Company</h2><p>Rename, leave, or delete.</p></div>
+        </div>
+      </div>
       {allowed("company.update") && (
         <div className="row" style={{ marginBottom: "1rem" }}>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={{ maxWidth: 320 }} />
-          <button disabled={busy || name.trim() === company.name} onClick={() => void wrap(async () => { await api(base, { method: "PATCH", body: { name } }); await reload(); })}>Rename</button>
+          <button disabled={busy || name.trim() === company.name} onClick={() => void wrap(async () => { await api(base, { method: "PATCH", body: { name } }); await reload(); }, "Renamed.")}>Rename</button>
         </div>
       )}
       <div className="row">
-        <button className="danger" disabled={busy} onClick={() => { if (confirm("Leave this company?")) void wrap(async () => { await api(`${base}/leave`, { body: {} }); navigate("/"); }); }}>Leave company</button>
+        <button className="ghost" disabled={busy} onClick={() => { if (confirm("Leave this company?")) void wrap(async () => { await api(`${base}/leave`, { body: {} }); navigate("/"); }); }}><Icon name="logout" /> Leave company</button>
         {allowed("company.delete") && (
-          <button className="danger" disabled={busy} onClick={() => { if (prompt(`Type the company name to delete it and everything in it:`) === company.name) void wrap(async () => { await api(base, { method: "DELETE" }); navigate("/"); }); }}>Delete company</button>
+          <button className="danger" disabled={busy} onClick={() => { if (prompt("Type the company name to delete it and everything in it:") === company.name) void wrap(async () => { await api(base, { method: "DELETE" }); navigate("/"); }); }}><Icon name="trash" /> Delete company</button>
         )}
       </div>
     </div>

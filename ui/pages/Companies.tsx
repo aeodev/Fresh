@@ -2,7 +2,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import type { CompanySummary } from "../../shared/types";
 import { api } from "../api";
+import { Alert, Avatar, Chip, EmptyState, Icon, Skeleton, greeting } from "../components/ui";
 import { useSession } from "../session";
+
+export function modeLabel(mode: CompanySummary["mode"]) {
+  return mode === "off" ? "Agent off" : mode === "shadow" ? "Shadow mode" : "Live";
+}
 
 export function Companies() {
   const { user, logout } = useSession();
@@ -10,6 +15,7 @@ export function Companies() {
   const [companies, setCompanies] = useState<CompanySummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -30,34 +36,56 @@ export function Companies() {
     }
   };
 
+  const showForm = creating || (companies !== null && companies.length === 0);
+
   return (
-    <div className="main" style={{ margin: "0 auto" }}>
+    <div className="main page" style={{ margin: "0 auto" }}>
       <div className="topbar">
-        <div className="title"><h1>Your companies</h1></div>
+        <div className="row" style={{ gap: "0.9rem" }}>
+          {user && <Avatar name={user.name} size="lg" />}
+          <div>
+            <div className="eyebrow">Your workspace</div>
+            <h1>{user ? greeting(user.name) : "Companies"}</h1>
+            <p>Each company has its own Freshchat, its own knowledge, and its own agent.</p>
+          </div>
+        </div>
         <div className="row">
-          <span className="muted small">{user?.email}</span>
-          <button className="small" onClick={() => void logout()}>Sign out</button>
+          {!showForm && <button className="primary" onClick={() => setCreating(true)}><Icon name="plus" /> New company</button>}
+          <button className="ghost" onClick={() => void logout()}><Icon name="logout" /> Sign out</button>
         </div>
       </div>
-      {error && <div className="alert error">{error}</div>}
-      <div className="grid-2">
-        {companies?.map((c) => (
-          <Link key={c.id} to={`/c/${c.slug}`} className="card" style={{ color: "inherit" }}>
-            <div className="card-header">
-              <h2>{c.name}</h2>
-              <span className={`pill ${c.mode}`}>{c.mode === "off" ? "Agent off" : c.mode === "shadow" ? "Shadow" : "Live"}</span>
-            </div>
-            <div className="muted small">You are {c.role}</div>
-          </Link>
-        ))}
-        <form className="card" onSubmit={create}>
-          <h2>New company</h2>
-          <p className="muted small">One company = one brand with one Freshchat account and one agent. You become its owner.</p>
-          <div className="field"><label>Company name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Support" required minLength={2} /></div>
-          <button className="primary" disabled={busy}>{busy ? "Creating…" : "Create company"}</button>
-        </form>
-      </div>
-      {companies && companies.length === 0 && <p className="muted">No companies yet. Create one, or ask a teammate for an invite link.</p>}
+      {error && <Alert tone="error">{error}</Alert>}
+      {companies === null ? (
+        <div className="grid-3"><div className="card"><Skeleton /></div><div className="card"><Skeleton /></div></div>
+      ) : (
+        <div className="grid-3">
+          {companies.map((c) => (
+            <Link key={c.id} to={`/c/${c.slug}`} className="card" style={{ color: "inherit", display: "block" }}>
+              <div className="row between" style={{ marginBottom: "0.9rem" }}>
+                <Avatar name={c.name} size="lg" />
+                <Chip tone={c.mode} dot>{modeLabel(c.mode)}</Chip>
+              </div>
+              <h2 style={{ marginBottom: "0.2rem" }}>{c.name}</h2>
+              <div className="muted small">You are {c.role}</div>
+              <div className="row" style={{ marginTop: "1rem", color: "var(--brand-600)", fontWeight: 700, fontSize: "0.85rem" }}>Open <Icon name="arrowRight" size={15} /></div>
+            </Link>
+          ))}
+          {showForm ? (
+            <form className="card" onSubmit={create} style={{ borderStyle: "dashed" }}>
+              <div className="row" style={{ marginBottom: "0.6rem" }}><span className="tile-ico tone-brand" style={{ width: 36, height: 36, borderRadius: 10, display: "grid", placeItems: "center" }}><Icon name="building" /></span><h2>New company</h2></div>
+              <p className="muted small" style={{ marginBottom: "0.9rem" }}>One brand, one Freshchat account, one agent. You become the owner and can invite your team.</p>
+              <div className="field"><label>Company name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Support" required minLength={2} autoFocus /></div>
+              <div className="row">
+                <button className="primary" disabled={busy}>{busy ? "Creating…" : "Create company"}</button>
+                {companies.length > 0 && <button type="button" className="ghost" onClick={() => setCreating(false)}>Cancel</button>}
+              </div>
+            </form>
+          ) : null}
+        </div>
+      )}
+      {companies && companies.length === 0 && !showForm && (
+        <EmptyState icon="building" title="No companies yet">Create one, or ask a teammate for an invite link.</EmptyState>
+      )}
     </div>
   );
 }

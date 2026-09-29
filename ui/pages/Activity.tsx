@@ -2,7 +2,25 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { EventRow } from "../../shared/types";
 import { api, timeAgo } from "../api";
+import { EmptyState, Icon, PageHeader, Skeleton, type IconName } from "../components/ui";
 import { useCompany } from "./Company";
+import { summarize } from "./ConversationDetail";
+
+export function eventIcon(type: string): { icon: IconName; tone: string } {
+  if (type.includes("error") || type.includes("rejected") || type.includes("failed")) return { icon: "alert", tone: "tone-rose" };
+  if (type === "turn_sent") return { icon: "send", tone: "tone-brand" };
+  if (type === "turn_shadow") return { icon: "moon", tone: "tone-amber" };
+  if (type === "turn_handoff" || type === "takeover") return { icon: "hand", tone: "tone-coral" };
+  if (type === "handback") return { icon: "sparkles", tone: "tone-brand" };
+  if (type === "turn_skipped") return { icon: "clock", tone: "tone-gray" };
+  if (type.startsWith("ingest")) return { icon: "activity", tone: "tone-sky" };
+  if (type.startsWith("knowledge")) return { icon: "book", tone: "tone-violet" };
+  if (type.startsWith("golden")) return { icon: "target", tone: "tone-violet" };
+  if (type.startsWith("connection") || type.startsWith("reply_agent") || type.startsWith("sidebar")) return { icon: "link", tone: "tone-sky" };
+  if (type.startsWith("member") || type.startsWith("invite")) return { icon: "users", tone: "tone-violet" };
+  if (type === "mode_changed") return { icon: "power", tone: "tone-brand" };
+  return { icon: "info", tone: "tone-gray" };
+}
 
 export function Activity() {
   const { company } = useCompany();
@@ -11,25 +29,27 @@ export function Activity() {
     api<{ events: EventRow[] }>(`/api/companies/${company.slug}/events?limit=200`).then((r) => setEvents(r.events)).catch(() => setEvents([]));
   }, [company.slug]);
   return (
-    <div className="card">
-      <div className="card-header"><h2>Activity</h2><span className="muted small">Every decision the agent and your team made</span></div>
-      {events === null ? <p className="muted">Loading…</p> : events.length === 0 ? <p className="empty">Nothing yet.</p> : (
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>When</th><th>Event</th><th>Conversation</th><th>Detail</th></tr></thead>
-            <tbody>
-              {events.map((e) => (
-                <tr key={e.id}>
-                  <td className="muted small" style={{ whiteSpace: "nowrap" }}>{timeAgo(e.createdAt)}</td>
-                  <td><span className={`pill ${e.type.includes("error") || e.type.includes("rejected") ? "danger" : e.type.startsWith("turn_sent") ? "ok" : e.type.includes("handoff") || e.type === "takeover" ? "warn" : ""}`}>{e.type}</span></td>
-                  <td>{e.conversationId ? <Link to={`/c/${company.slug}/conversations/${encodeURIComponent(e.conversationId)}`} className="mono small">{e.conversationId.slice(0, 8)}</Link> : "—"}</td>
-                  <td className="small mono muted" style={{ maxWidth: 520, overflowWrap: "anywhere" }}>{JSON.stringify(e.detail)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+    <>
+      <PageHeader eyebrow="Activity" title="Everything that happened" subtitle="Every decision the agent and your team made, newest first." />
+      <div className="card">
+        {events === null ? <Skeleton lines={6} title={false} /> : events.length === 0 ? <EmptyState icon="activity" title="Nothing yet">Events show up as you set things up and as chats come in.</EmptyState> : (
+          <ul className="timeline">
+            {events.map((e) => {
+              const { icon, tone } = eventIcon(e.type);
+              return (
+                <li key={e.id}>
+                  <span className={`ico ${tone}`}><Icon name={icon} /></span>
+                  <div>
+                    <div className="what">{e.type.replace(/_/g, " ")}{e.conversationId && <> · <Link to={`/c/${company.slug}/conversations/${encodeURIComponent(e.conversationId)}`} className="mono tiny">{e.conversationId.slice(0, 8)}</Link></>}</div>
+                    <div className="detail">{summarize(e.detail)}</div>
+                  </div>
+                  <span className="muted tiny" style={{ whiteSpace: "nowrap" }}>{timeAgo(e.createdAt)}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </>
   );
 }

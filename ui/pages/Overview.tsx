@@ -1,46 +1,103 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import type { ConversationRow } from "../../shared/types";
+import type { AgentMode, AgentSettings, ConversationRow, FreshchatConnection } from "../../shared/types";
 import { api, timeAgo } from "../api";
+import { Avatar, Chip, EmptyState, Icon, PageHeader, Ring, useToast, type IconName } from "../components/ui";
 import { useCompany } from "./Company";
 
 export function Overview() {
-  const { company } = useCompany();
-  const [attention, setAttention] = useState<ConversationRow[]>([]);
+  const { company, allowed, reload } = useCompany();
+  const toast = useToast();
+  const [attention, setAttention] = useState<ConversationRow[] | null>(null);
+  const [connection, setConnection] = useState<FreshchatConnection | null>(null);
+  const [switching, setSwitching] = useState(false);
   const base = `/c/${company.slug}`;
   const s = company.setup;
 
   useEffect(() => {
-    api<{ conversations: ConversationRow[] }>(`/api/companies/${company.slug}/conversations?state=human&limit=10`).then((r) => setAttention(r.conversations)).catch(() => setAttention([]));
+    api<{ conversations: ConversationRow[] }>(`/api/companies/${company.slug}/conversations?state=human&limit=8`).then((r) => setAttention(r.conversations)).catch(() => setAttention([]));
+    api<{ connection: FreshchatConnection | null }>(`/api/companies/${company.slug}/connection`).then((r) => setConnection(r.connection)).catch(() => setConnection(null));
   }, [company.slug]);
 
+  const setMode = async (mode: AgentMode) => {
+    if (mode === company.mode) return;
+    setSwitching(true);
+    try {
+      await api<{ settings: AgentSettings }>(`/api/companies/${company.slug}/agent/settings`, { method: "PUT", body: { mode } });
+      await reload();
+      toast.success(mode === "live" ? "The agent is live." : mode === "shadow" ? "Shadow mode on: drafts only." : "Agent switched off.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not change the mode.");
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const agentName = connection?.replyAgentName || "Your agent";
   const steps: Array<{ done: boolean; label: string; to: string; hint: string }> = [
     { done: s.connected, label: "Connect Freshchat", to: `${base}/settings#connection`, hint: "API URL and key, verified by listing your agents." },
     { done: s.replyAgentSet, label: "Pick the reply agent", to: `${base}/settings#connection`, hint: "A dedicated agent seat the bot replies as." },
-    { done: s.sidebarTokenIssued, label: "Install the Freshchat sidebar app", to: `${base}/settings#sidebar`, hint: "Gives agents Take over / Hand back and forwards events." },
-    { done: s.knowledgeActive, label: "Activate a knowledge version", to: `${base}/knowledge`, hint: "The agent answers only from the active version." },
+    { done: s.knowledgeActive, label: "Activate knowledge", to: `${base}/knowledge`, hint: "The agent answers only from the active version." },
     { done: s.goldenTestsPassing === true, label: "Golden tests passing", to: `${base}/knowledge`, hint: s.goldenTestsPassing === null ? "Add a few question/answer pairs and run them." : s.goldenTestsPassing ? "All passing." : "Some tests fail; fix the documents." },
-    { done: s.mode === "live", label: "Go live", to: `${base}/settings#agent`, hint: s.mode === "shadow" ? "Shadow mode is on: drafts are recorded, nothing is sent." : "Start in shadow mode, then switch to live." },
+    { done: s.sidebarTokenIssued, label: "Install the Freshchat sidebar", to: `${base}/settings#sidebar`, hint: "Take over / Hand back for your team, plus event forwarding." },
+    { done: s.mode === "live", label: "Go live", to: `${base}/settings#agent`, hint: "Start in shadow mode, watch the drafts, then switch to live." },
   ];
-  const remaining = steps.filter((x) => !x.done).length;
+  const done = steps.filter((x) => x.done).length;
+  const headline = company.mode === "live" ? `${agentName} is live` : company.mode === "shadow" ? `${agentName} is in shadow mode` : `${agentName} is switched off`;
+  const sub = company.mode === "live" ? "Answering every new customer message from the active knowledge. People can take over any chat." : company.mode === "shadow" ? "Drafting a reply for every customer message and recording it. Nothing reaches customers yet." : "Finish setup, then start in shadow mode to see what it would say.";
+
+  const tiles: Array<{ icon: IconName; tone: string; value: number; label: string }> = [
+    { icon: "chat", tone: "tone-sky", value: company.stats.conversationsToday, label: "Conversations today" },
+    { icon: "send", tone: "tone-brand", value: company.stats.sentToday, label: "Replies sent" },
+    { icon: "hand", tone: "tone-coral", value: company.stats.handoffsToday, label: "Handoffs" },
+    { icon: "users", tone: "tone-violet", value: company.stats.humanNow, label: "Owned by people" },
+  ];
 
   return (
     <>
+      <PageHeader eyebrow="Overview" title={company.name} subtitle="What your agent is doing today." actions={<Link className="btn" to={`${base}/test`}><Icon name="flask" /> Try the agent</Link>} />
+      <div className="hero">
+        <div className="grid">
+          <Avatar name={agentName} kind="bot" size="lg" />
+          <div>
+            <h2>{headline}</h2>
+            <p>{sub}</p>
+            <div className="stat-row">
+              <div><strong>{company.stats.sentToday}</strong><span>Replies today</span></div>
+              <div><strong>{company.stats.handoffsToday}</strong><span>Handoffs</span></div>
+              <div><strong>{done}/{steps.length}</strong><span>Setup steps</span></div>
+            </div>
+          </div>
+          {allowed("agent.mode") && (
+            <div className="segmented" style={{ background: "rgba(255,255,255,0.08)" }}>
+              {(["off", "shadow", "live"] as AgentMode[]).map((m) => (
+                <button key={m} type="button" disabled={switching} className={company.mode === m ? "active" : ""} style={company.mode === m ? undefined : { color: "#c7d0e0" }} onClick={() => void setMode(m)}>
+                  {m === "off" ? "Off" : m === "shadow" ? "Shadow" : "Live"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
       <div className="tiles">
-        <div className="tile"><div className="value">{company.stats.conversationsToday}</div><div className="label">Conversations today</div></div>
-        <div className="tile"><div className="value">{company.stats.sentToday}</div><div className="label">Replies sent today</div></div>
-        <div className="tile"><div className="value">{company.stats.handoffsToday}</div><div className="label">Handoffs today</div></div>
-        <div className="tile"><div className="value">{company.stats.humanNow}</div><div className="label">Chats owned by people</div></div>
+        {tiles.map((t) => (
+          <div key={t.label} className="tile"><span className={`ico ${t.tone}`}><Icon name={t.icon} /></span><div><div className="value">{t.value}</div><div className="label">{t.label}</div></div></div>
+        ))}
       </div>
       <div className="grid-2">
         <div className="card">
-          <div className="card-header"><h2>Setup</h2><span className={`pill ${remaining ? "warn" : "ok"}`}>{remaining ? `${remaining} to go` : "Complete"}</span></div>
+          <div className="card-header">
+            <div className="row" style={{ gap: "0.9rem" }}>
+              <Ring value={done / steps.length} label={`${Math.round((done / steps.length) * 100)}%`} />
+              <div><h2>Setup</h2><p>{done === steps.length ? "Everything is in place." : `${steps.length - done} step${steps.length - done === 1 ? "" : "s"} to go.`}</p></div>
+            </div>
+          </div>
           <ul className="checklist">
             {steps.map((step) => (
-              <li key={step.label}>
-                <span className={`mark ${step.done ? "done" : ""}`}>{step.done ? "✓" : ""}</span>
+              <li key={step.label} className={step.done ? "done" : ""}>
+                <span className={`mark ${step.done ? "done" : ""}`}><Icon name="check" /></span>
                 <div>
-                  <Link to={step.to}><strong>{step.label}</strong></Link>
+                  <Link to={step.to} className="title" style={{ color: step.done ? undefined : "var(--ink)" }}>{step.label}</Link>
                   <div className="muted small">{step.hint}</div>
                 </div>
               </li>
@@ -48,16 +105,17 @@ export function Overview() {
           </ul>
         </div>
         <div className="card">
-          <div className="card-header"><h2>Needs a person</h2><Link to={`${base}/conversations?state=human`} className="small">All</Link></div>
-          {attention.length === 0 ? (
-            <p className="empty">No conversation is waiting on a person right now.</p>
+          <div className="card-header"><div><h2>Needs a person</h2><p>Chats a teammate owns right now.</p></div><Link to={`${base}/conversations?state=human`} className="small strong">View all</Link></div>
+          {attention === null ? <div className="skeleton line" /> : attention.length === 0 ? (
+            <EmptyState icon="check" title="Nobody is waiting">Every open chat is with the agent or resolved.</EmptyState>
           ) : (
             <table>
               <tbody>
                 {attention.map((c) => (
-                  <tr key={c.id}>
-                    <td><Link to={`${base}/conversations/${encodeURIComponent(c.id)}`}>{c.customerName || c.id.slice(0, 8)}</Link><div className="muted small">{c.stateReason}</div></td>
-                    <td className="muted small" style={{ whiteSpace: "nowrap" }}>{timeAgo(c.updatedAt)}</td>
+                  <tr key={c.id} className="clickable" onClick={() => (window.location.href = `${base}/conversations/${encodeURIComponent(c.id)}`)}>
+                    <td style={{ width: 44 }}><Avatar name={c.customerName || c.id} /></td>
+                    <td><strong>{c.customerName || c.id.slice(0, 8)}</strong><div className="muted small truncate" style={{ maxWidth: 260 }}>{c.stateReason}</div></td>
+                    <td className="muted small" style={{ whiteSpace: "nowrap", textAlign: "right" }}>{timeAgo(c.updatedAt)}{c.needsAttention && <div><Chip tone="warn">attention</Chip></div>}</td>
                   </tr>
                 ))}
               </tbody>
