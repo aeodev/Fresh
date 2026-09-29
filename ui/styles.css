@@ -1,9 +1,9 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap");
 
 /* ============ Tokens ============ */
 :root {
-  --font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --paper: #faf9f6;
@@ -50,10 +50,10 @@ html, body { margin: 0; padding: 0; }
 body { background: var(--paper); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01", "tnum"; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4 { margin: 0; line-height: 1.15; }
-.display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.01em; }
-.display em { font-style: italic; color: var(--green); }
-h1.display { font-size: 2.75rem; }
-h2.display { font-size: 1.9rem; }
+.display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; }
+.display em { font-style: normal; color: var(--green); }
+h1.display { font-size: 2.35rem; }
+h2.display { font-size: 1.6rem; }
 h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
 h3 { font-size: 1rem; font-weight: 700; }
 p { margin: 0; }
@@ -86,8 +86,8 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
 
 /* ============ Top bar ============ */
 .bar { position: sticky; top: 0; z-index: 30; height: var(--bar-h); background: rgba(250, 249, 246, 0.86); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 1.25rem; padding: 0 2.5rem; }
-.bar .brand { display: flex; align-items: center; gap: 0.55rem; font-family: var(--font-display); font-size: 1.45rem; color: var(--ink); }
-.bar .brand .mark { width: 30px; height: 30px; border-radius: 10px; background: var(--ink); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-size: 1.1rem; }
+.bar .brand { display: flex; align-items: center; gap: 0.55rem; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; color: var(--ink); }
+.bar .brand .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--green); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 0.95rem; }
 .bar nav { display: flex; gap: 0.15rem; margin-left: 0.5rem; }
 .bar nav a { padding: 0.5rem 0.85rem; border-radius: 999px; font-weight: 600; font-size: 0.92rem; color: var(--mute); transition: color 0.15s, background 0.15s; display: inline-flex; align-items: center; gap: 0.45rem; }
 .bar nav a:hover { color: var(--ink); background: var(--paper-2); }
@@ -134,7 +134,7 @@ code, .mono { font-family: var(--mono); font-size: 0.85em; }
 .orb.shadow { background: radial-gradient(circle at 35% 30%, #fff 0%, #fbefcf 18%, #d99a12 55%, #7a5306 100%); box-shadow: 0 20px 50px -18px rgba(217, 154, 18, 0.6), inset 0 -10px 24px rgba(0, 0, 0, 0.12); }
 .orb.off { background: radial-gradient(circle at 35% 30%, #fff 0%, #f2f0ea 20%, #cfcbc2 60%, #8e8a80 100%); box-shadow: inset 0 -10px 24px rgba(0, 0, 0, 0.1); }
 .orb::after { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 1px solid rgba(23, 22, 15, 0.08); }
-.presence .who h1 { font-size: 2.6rem; }
+.presence .who h1 { font-size: 2.3rem; }
 .presence .who .sentence { color: var(--mute); font-size: 1.05rem; margin-top: 0.5rem; max-width: 52ch; }
 .presence .who .controls { margin-top: 1.5rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
 .presence .today { background: var(--ink); color: #fff; border-radius: var(--r-xl); padding: 2rem 2.25rem; display: flex; flex-direction: column; justify-content: space-between; }
@@ -255,7 +255,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .empty { text-align: center; padding: 3.5rem 1.5rem; color: var(--mute); max-width: 44ch; margin: 0 auto; }
 .empty .glyph { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 1.1rem; display: grid; place-items: center; background: var(--paper-2); color: var(--ink-2); }
 .empty .glyph svg { width: 28px; height: 28px; }
-.empty strong { display: block; color: var(--ink); font-size: 1.15rem; margin-bottom: 0.35rem; font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; }
+.empty strong { display: block; color: var(--ink); font-size: 1.15rem; margin-bottom: 0.35rem; font-weight: 700; letter-spacing: -0.02em; }
 
 /* ============ Inbox (conversations) ============ */
 .inbox { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); overflow: hidden; box-shadow: var(--shadow); min-height: calc(100vh - var(--bar-h) - 12rem); }
@@ -361,7 +361,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 /* ============ Auth ============ */
 .auth { min-height: 100vh; display: grid; place-items: center; padding: 2rem 1.25rem; background: radial-gradient(80% 60% at 50% 0%, #fff 0%, var(--paper) 70%); }
 .auth .card { width: 100%; max-width: 440px; background: #fff; border: 1px solid var(--line); border-radius: var(--r-xl); padding: 2.75rem 2.5rem; box-shadow: var(--shadow-lg); }
-.auth .brand { display: flex; align-items: center; gap: 0.55rem; font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 1.75rem; }
-.auth .brand .mark { width: 32px; height: 32px; border-radius: 10px; background: var(--ink); color: #fff; display: grid; place-items: center; font-family: var(--font-display); }
-.auth h1 { font-size: 2.2rem; }
+.auth .brand { display: flex; align-items: center; gap: 0.55rem; font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; margin-bottom: 1.75rem; }
+.auth .brand .mark { width: 32px; height: 32px; border-radius: 9px; background: var(--green); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 0.95rem; }
+.auth h1 { font-size: 1.9rem; }
 .auth .sub { color: var(--mute); margin: 0.5rem 0 1.75rem; }

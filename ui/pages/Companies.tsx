@@ -61,7 +61,7 @@ export function Companies() {
               <Link key={c.id} to={`/c/${c.slug}`} className="panel" style={{ display: "flex", flexDirection: "column", gap: "1.25rem", minHeight: 210 }}>
                 <div className="row between"><Orb mode={c.mode} /><Chip tone={c.mode} dot>{modeLabel(c.mode)}</Chip></div>
                 <div>
-                  <h2 className="display" style={{ fontSize: "1.8rem" }}>{c.name}</h2>
+                  <h2 className="display" style={{ fontSize: "1.5rem" }}>{c.name}</h2>
                   <div className="mute small" style={{ marginTop: "0.25rem" }}>You are {c.role}</div>
                 </div>
               </Link>

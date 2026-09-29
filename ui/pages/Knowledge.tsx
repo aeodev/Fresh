@@ -122,7 +122,7 @@ function VersionPanel({ base, version, docs, canWrite, canActivate, busy, run }:
     <div className="panel">
       <div className="panel-head">
         <div>
-          <div className="row"><h2 className="display" style={{ fontSize: "1.8rem" }}>Version {version.number}</h2><Chip tone={version.status} dot={version.status === "active"}>{version.status}</Chip></div>
+          <div className="row"><h2 className="display" style={{ fontSize: "1.5rem" }}>Version {version.number}</h2><Chip tone={version.status} dot={version.status === "active"}>{version.status}</Chip></div>
           <p>{version.status === "active" ? "This is what the agent reads right now. Create a draft to change it." : version.status === "draft" ? "Add documents, test it in Test chat, then activate." : `Archived ${formatDate(version.createdAt)}. Restore it to make it live again.`}</p>
         </div>
         <div className="row">
