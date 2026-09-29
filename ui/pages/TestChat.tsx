@@ -67,7 +67,7 @@ export function TestChat() {
       {error && <Alert tone="error">{error}</Alert>}
       <div className="cols" style={{ gridTemplateColumns: "minmax(0, 1fr) 340px" }}>
         <div className="panel" style={{ display: "flex", flexDirection: "column", minHeight: 560, padding: "1.5rem" }}>
-          <div className="chat grow" style={{ overflowY: "auto", padding: "0.5rem 0.5rem 1rem" }}>
+          <div className="chat flip grow" style={{ overflowY: "auto", padding: "0.5rem 0.5rem 1rem" }}>
             {lines.length === 0 && <EmptyState icon="sparkles" title="Ask like a customer would">Try one of the suggestions on the right, or type your own.</EmptyState>}
             {lines.map((l, i) => (
               <div key={i} style={{ display: "contents" }}>
