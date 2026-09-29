@@ -126,7 +126,7 @@ export function Meter({ value, label }: { value: number; label?: string }) {
   const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
   return (
     <div className="meter">
-      <div className="bar"><i style={{ width: `${pct}%` }} /></div>
+      <div className="track"><i style={{ width: `${pct}%` }} /></div>
       <strong className="small">{label ?? `${pct}%`}</strong>
     </div>
   );

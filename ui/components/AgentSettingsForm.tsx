@@ -75,6 +75,14 @@ export function AgentSettingsForm() {
             <input type="range" min={0} max={12} step={1} value={settings.debounceSeconds} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, debounceSeconds: Number(e.target.value) })} />
             <div className="hint">Lets a customer finish a burst of short messages before one answer goes out.</div>
           </div>
+          <div className="field">
+            <label>Typing pace</label>
+            <select value={settings.typingPace} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, typingPace: e.target.value === "instant" ? "instant" : "natural" })}>
+              <option value="natural">Natural: read, then type (1–9 s)</option>
+              <option value="instant">Instant: send as soon as the draft is ready</option>
+            </select>
+            <div className="hint">Natural pacing waits about as long as a person would take to read the question and type the answer.</div>
+          </div>
           <div className="field"><label>Handoff phrases</label><input type="text" value={settings.handoffKeywords} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, handoffKeywords: e.target.value })} /><div className="hint">Comma-separated. Any of these in a customer message hands the chat to a person.</div></div>
         </div>
         <div>

@@ -298,8 +298,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .msg.system .bubble { background: transparent; color: var(--mute-2); font-size: 0.78rem; }
 .msg .meta { display: block; margin-top: 0.35rem; font-size: 0.72rem; opacity: 0.65; }
 .why { align-self: flex-end; max-width: 78%; margin-right: 46px; border: 1px solid var(--line); border-radius: var(--r); padding: 0.85rem 1rem; font-size: 0.86rem; background: #fff; }
-.why .bar { height: 6px; background: var(--paper-2); border-radius: 999px; overflow: hidden; margin: 0.5rem 0; }
-.why .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--orange), var(--amber), var(--green)); }
+.why .track { height: 6px; background: var(--paper-2); border-radius: 999px; overflow: hidden; margin: 0.5rem 0; }
+.why .track i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--orange), var(--amber), var(--green)); }
 .typing { display: inline-flex; gap: 5px; padding: 0.85rem 1rem; }
 .typing i { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: dots 1.2s infinite; }
 .typing i:nth-child(2) { animation-delay: 0.15s; }
@@ -363,8 +363,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
 /* ============ Meter / ring ============ */
 .meter { display: flex; align-items: center; gap: 0.75rem; }
-.meter .bar { flex: 1; height: 8px; background: var(--paper-2); border-radius: 999px; overflow: hidden; }
-.meter .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--orange), var(--amber), var(--green)); }
+.meter .track { flex: 1; height: 8px; background: var(--paper-2); border-radius: 999px; overflow: hidden; }
+.meter .track i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--orange), var(--amber), var(--green)); }
 .ring { --p: 0; width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(var(--green) calc(var(--p) * 1%), var(--paper-2) 0); display: grid; place-items: center; flex-shrink: 0; }
 .ring > span { width: 50px; height: 50px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-weight: 800; font-size: 0.84rem; }
 

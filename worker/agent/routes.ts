@@ -23,6 +23,7 @@ const toSettings = (row: Awaited<ReturnType<typeof getSettings>>): AgentSettings
   handoffKeywords: row.handoff_keywords,
   handoffMessage: row.handoff_message,
   debounceSeconds: row.debounce_seconds,
+  typingPace: row.typing_pace === "instant" ? "instant" : "natural",
 });
 
 agentRoutes.get("/:slug/agent/settings", withCompany("company.read"), async (c) => c.json({ settings: toSettings(await getSettings(c.env.DB, c.get("company").id)) }));
@@ -44,13 +45,14 @@ agentRoutes.put("/:slug/agent/settings", withCompany("agent.settings"), async (c
   }
   await run(
     c.env.DB,
-    "UPDATE agent_settings SET mode = ?, persona = ?, confidence_threshold = ?, handoff_keywords = ?, handoff_message = ?, debounce_seconds = ?, updated_at = ? WHERE company_id = ?",
+    "UPDATE agent_settings SET mode = ?, persona = ?, confidence_threshold = ?, handoff_keywords = ?, handoff_message = ?, debounce_seconds = ?, typing_pace = ?, updated_at = ? WHERE company_id = ?",
     mode,
     body.persona === undefined ? current.persona : str(body.persona, 2000),
     num(body.confidenceThreshold, current.confidence_threshold, 0, 1),
     body.handoffKeywords === undefined ? current.handoff_keywords : str(body.handoffKeywords, 1000),
     body.handoffMessage === undefined ? current.handoff_message : str(body.handoffMessage, 1000),
     Math.round(num(body.debounceSeconds, current.debounce_seconds, 0, 12)),
+    body.typingPace === undefined ? current.typing_pace : body.typingPace === "instant" ? "instant" : "natural",
     new Date().toISOString(),
     company.id,
   );

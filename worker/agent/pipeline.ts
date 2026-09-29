@@ -18,6 +18,7 @@ import { decide, detectHandoffIntent } from "./gate";
 import { structuredCompletion } from "./openai";
 import { ANSWER_SCHEMA, buildInput, buildInstructions, type AnswerOutput, type TranscriptLine } from "./prompt";
 import { findOpenCustomerTurn } from "./turn";
+import { humanDelayMs, sleep } from "./pace";
 
 export type SettingsRow = {
   company_id: string;
@@ -27,6 +28,7 @@ export type SettingsRow = {
   handoff_keywords: string;
   handoff_message: string;
   debounce_seconds: number;
+  typing_pace: "instant" | "natural";
 };
 
 export async function getSettings(db: D1Database, companyId: string): Promise<SettingsRow> {
@@ -222,6 +224,11 @@ export async function runTurn(env: Env, input: { companyId: string; conversation
   const turnId = newId("turn");
   let freshchatMessageId: string | null = null;
   if (gate.decision === "sent" && draft) {
+    // A person would read, then type. Land the reply on that clock, not the model's.
+    if (settings.typing_pace !== "instant") {
+      const wait = humanDelayMs({ questionChars: open.text.length, answerChars: draft.answer.length, alreadySpentMs: draft.latencyMs });
+      if (wait > 0) await sleep(wait);
+    }
     const sent = await client.sendMessage(conversationId, { text: draft.answer, actorId: connection.reply_agent_id });
     freshchatMessageId = sent.id ?? null;
     if (sent.id) {

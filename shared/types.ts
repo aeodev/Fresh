@@ -54,6 +54,7 @@ export type AgentSettings = {
   handoffKeywords: string;
   handoffMessage: string;
   debounceSeconds: number;
+  typingPace: "instant" | "natural";
 };
 
 export type KnowledgeVersion = {

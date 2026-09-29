@@ -82,7 +82,7 @@ function Why({ turn }: { turn: Turn }) {
   return (
     <div className="why">
       <div className="row between"><Chip tone={turn.decision}>{turn.decision}</Chip><span className="mute-2 tiny">{turn.model || "no model"} · {turn.latencyMs} ms</span></div>
-      {turn.decision !== "error" && <div className="bar"><i style={{ width: `${pct}%` }} /></div>}
+      {turn.decision !== "error" && <div className="track"><i style={{ width: `${pct}%` }} /></div>}
       <div><strong className="num">{pct}%</strong> confident · {turn.citations.length} source{turn.citations.length === 1 ? "" : "s"} · {turn.reason}</div>
       {turn.decision !== "sent" && turn.answer && <div style={{ marginTop: 6 }}><span className="mute">Draft:</span> {turn.answer}</div>}
       {turn.citations.length > 0 && (
