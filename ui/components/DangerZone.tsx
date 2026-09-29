@@ -25,16 +25,11 @@ export function DangerZone() {
   };
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="row" style={{ gap: "0.8rem" }}>
-          <span className="tile-ico tone-gray" style={{ width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center" }}><Icon name="building" /></span>
-          <div><h2>Company</h2><p>Rename, leave, or delete.</p></div>
-        </div>
-      </div>
+    <div className="panel">
+      <div className="panel-head"><div><h2>Company</h2><p>Rename, leave, or delete.</p></div></div>
       {allowed("company.update") && (
-        <div className="row" style={{ marginBottom: "1rem" }}>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={{ maxWidth: 320 }} />
+        <div className="row" style={{ marginBottom: "1.25rem" }}>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={{ maxWidth: 340 }} />
           <button disabled={busy || name.trim() === company.name} onClick={() => void wrap(async () => { await api(base, { method: "PATCH", body: { name } }); await reload(); }, "Renamed.")}>Rename</button>
         </div>
       )}

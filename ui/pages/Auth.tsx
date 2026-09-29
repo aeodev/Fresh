@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import type { User } from "../../shared/types";
 import { api } from "../api";
-import { Alert, Avatar, Icon } from "../components/ui";
+import { Alert, Icon } from "../components/ui";
 import { useSession } from "../session";
 
 function useAuthForm(path: string) {
@@ -27,20 +27,13 @@ function useAuthForm(path: string) {
   return { submit, error, busy, next: params.get("next") };
 }
 
-function Art() {
+function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="art">
-      <div className="brand" style={{ padding: 0 }}><span className="logo">Q</span> FreshQA</div>
-      <div>
-        <h1>One agent per company. Every customer answered from your own knowledge.</h1>
-        <p>Connect Freshchat, add what your team knows, and let the agent handle the chats. Your people take over any conversation with one click.</p>
-        <div className="demo chat">
-          <div className="msg customer"><Avatar name="Jane C" /><div className="bubble">Hi! Do you ship to Canada and how long does it take?</div></div>
-          <div className="msg agent"><Avatar name="Ava" kind="bot" /><div className="bubble">Yes, we ship to Canada. Delivery takes 5–8 business days and costs a flat $15.</div></div>
-          <div className="msg customer"><Avatar name="Jane C" /><div className="bubble">Perfect, thanks!</div></div>
-        </div>
+    <div className="auth">
+      <div className="card page">
+        <div className="brand"><span className="mark">Q</span>FreshQA</div>
+        {children}
       </div>
-      <p className="tiny" style={{ color: "#6b7a99" }}>Replies are grounded in your documents and cited. Low confidence hands off to a person, never a guess.</p>
     </div>
   );
 }
@@ -53,22 +46,17 @@ export function Login() {
     void submit({ email: String(data.get("email")), password: String(data.get("password")) });
   };
   return (
-    <div className="auth">
-      <Art />
-      <div className="form">
-        <form className="auth-card page" onSubmit={onSubmit}>
-          <h1>Welcome back</h1>
-          <p>Sign in to your FreshQA account.</p>
-          {error && <Alert tone="error">{error}</Alert>}
-          <div className="field"><label>Email</label><input type="email" name="email" required autoComplete="email" autoFocus /></div>
-          <div className="field"><label>Password</label><input type="password" name="password" required autoComplete="current-password" /></div>
-          <button className="primary" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>{busy ? "Signing in…" : "Sign in"} <Icon name="arrowRight" /></button>
-          <p className="muted small" style={{ marginTop: "1.2rem", textAlign: "center" }}>
-            New here? <Link to={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`}>Create an account</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+    <Shell>
+      <form onSubmit={onSubmit}>
+        <h1 className="display">Welcome <em>back</em>.</h1>
+        <p className="sub">Sign in to your workspace.</p>
+        {error && <div style={{ marginBottom: "1rem" }}><Alert tone="error">{error}</Alert></div>}
+        <div className="field"><label>Email</label><input type="email" name="email" required autoComplete="email" autoFocus /></div>
+        <div className="field"><label>Password</label><input type="password" name="password" required autoComplete="current-password" /></div>
+        <button className="primary" disabled={busy} style={{ width: "100%" }}>{busy ? "Signing in…" : "Sign in"} <Icon name="arrowRight" /></button>
+        <p className="mute small" style={{ marginTop: "1.5rem", textAlign: "center" }}>New here? <Link className="link" to={`/signup${next ? `?next=${encodeURIComponent(next)}` : ""}`}>Create an account</Link></p>
+      </form>
+    </Shell>
   );
 }
 
@@ -80,22 +68,17 @@ export function Signup() {
     void submit({ name: String(data.get("name")), email: String(data.get("email")), password: String(data.get("password")) });
   };
   return (
-    <div className="auth">
-      <Art />
-      <div className="form">
-        <form className="auth-card page" onSubmit={onSubmit}>
-          <h1>Create your account</h1>
-          <p>Takes ten seconds. No email verification.</p>
-          {error && <Alert tone="error">{error}</Alert>}
-          <div className="field"><label>Your name</label><input type="text" name="name" required autoComplete="name" autoFocus placeholder="Julius Callejo" /></div>
-          <div className="field"><label>Email</label><input type="email" name="email" required autoComplete="email" placeholder="you@company.com" /></div>
-          <div className="field"><label>Password</label><input type="password" name="password" required minLength={8} autoComplete="new-password" /><div className="hint">At least 8 characters.</div></div>
-          <button className="primary" disabled={busy} style={{ width: "100%", justifyContent: "center" }}>{busy ? "Creating…" : "Create account"} <Icon name="arrowRight" /></button>
-          <p className="muted small" style={{ marginTop: "1.2rem", textAlign: "center" }}>
-            Already have one? <Link to={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}>Sign in</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+    <Shell>
+      <form onSubmit={onSubmit}>
+        <h1 className="display">One agent, <em>every</em> customer.</h1>
+        <p className="sub">Create your account. No email verification, no card.</p>
+        {error && <div style={{ marginBottom: "1rem" }}><Alert tone="error">{error}</Alert></div>}
+        <div className="field"><label>Your name</label><input type="text" name="name" required autoComplete="name" autoFocus placeholder="Julius Callejo" /></div>
+        <div className="field"><label>Email</label><input type="email" name="email" required autoComplete="email" placeholder="you@company.com" /></div>
+        <div className="field"><label>Password</label><input type="password" name="password" required minLength={8} autoComplete="new-password" /><div className="hint">At least 8 characters.</div></div>
+        <button className="primary" disabled={busy} style={{ width: "100%" }}>{busy ? "Creating…" : "Create account"} <Icon name="arrowRight" /></button>
+        <p className="mute small" style={{ marginTop: "1.5rem", textAlign: "center" }}>Already have one? <Link className="link" to={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}>Sign in</Link></p>
+      </form>
+    </Shell>
   );
 }

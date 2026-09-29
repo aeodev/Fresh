@@ -32,7 +32,7 @@ export function AgentSettingsForm() {
     try {
       const r = await api<{ settings: AgentSettings }>(base, { method: "PUT", body: settings });
       setSettings(r.settings);
-      toast.success(r.settings.mode === "live" ? "Saved. The agent is live." : r.settings.mode === "shadow" ? "Saved. Shadow mode: drafts only." : "Saved. The agent is off.");
+      toast.success("Saved.");
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save.");
@@ -41,21 +41,21 @@ export function AgentSettingsForm() {
     }
   };
 
-  if (!settings) return <div className="card">{error ? <Alert tone="error">{error}</Alert> : <Skeleton />}</div>;
+  if (!settings) return <div className="panel">{error ? <Alert tone="error">{error}</Alert> : <Skeleton />}</div>;
   const s = company.setup;
   const liveBlockers = [!s.connected && "connect Freshchat", !s.replyAgentSet && "pick the reply agent", !s.knowledgeActive && "activate a knowledge version"].filter(Boolean) as string[];
 
   return (
-    <form className="card" onSubmit={save}>
-      <div className="card-header"><div><h2>Agent</h2><p>How it behaves and when it is allowed to send.</p></div></div>
-      {error && <Alert tone="error">{error}</Alert>}
+    <form className="panel" onSubmit={save}>
+      <div className="panel-head"><div><h2>Agent</h2><p>How it behaves and when it is allowed to send.</p></div></div>
+      {error && <div style={{ marginBottom: "1rem" }}><Alert tone="error">{error}</Alert></div>}
       <div className="field">
         <label>Mode</label>
-        <div className="mode-cards">
+        <div className="mode-cards" role="radiogroup">
           {MODES.map((m) => {
             const blocked = m.mode === "live" && liveBlockers.length > 0;
             return (
-              <div key={m.mode} role="radio" aria-checked={settings.mode === m.mode} tabIndex={0} className={`mode-card ${m.mode} ${settings.mode === m.mode ? "selected" : ""} ${!canMode || blocked ? "disabled" : ""}`} onClick={() => { if (canMode && !blocked) setSettings({ ...settings, mode: m.mode }); }}>
+              <div key={m.mode} role="radio" aria-checked={settings.mode === m.mode} tabIndex={0} className={`mode-card ${m.mode} ${settings.mode === m.mode ? "on" : ""} ${!canMode || blocked ? "disabled" : ""}`} onClick={() => { if (canMode && !blocked) setSettings({ ...settings, mode: m.mode }); }}>
                 <strong><Icon name={m.icon} size={16} /> {m.title}</strong>
                 <p>{blocked ? `First: ${liveBlockers.join(", ")}.` : m.blurb}</p>
               </div>
@@ -63,7 +63,7 @@ export function AgentSettingsForm() {
           })}
         </div>
       </div>
-      <div className="grid-2">
+      <div className="cols two">
         <div>
           <div className="field">
             <label>Confidence threshold · <span className="mono">{settings.confidenceThreshold.toFixed(2)}</span></label>
@@ -78,8 +78,8 @@ export function AgentSettingsForm() {
           <div className="field"><label>Handoff phrases</label><input type="text" value={settings.handoffKeywords} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, handoffKeywords: e.target.value })} /><div className="hint">Comma-separated. Any of these in a customer message hands the chat to a person.</div></div>
         </div>
         <div>
-          <div className="field"><label>Persona</label><textarea value={settings.persona} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, persona: e.target.value })} placeholder="Warm and concise. Use the customer's first name when you know it. We are a small team in Manila; office hours are 9–6 PHT." style={{ minHeight: 150 }} /></div>
-          <div className="field"><label>Handoff message <span className="muted">(optional)</span></label><input type="text" value={settings.handoffMessage} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, handoffMessage: e.target.value })} placeholder="Let me get a teammate to help you with this." /><div className="hint">Sent once when the agent hands off in live mode. Leave empty to stay silent.</div></div>
+          <div className="field"><label>Persona</label><textarea value={settings.persona} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, persona: e.target.value })} placeholder="Warm and concise. Use the customer's first name when you know it. We are a small team in Manila; office hours are 9–6 PHT." style={{ minHeight: 160 }} /></div>
+          <div className="field"><label>Handoff message <span className="mute">(optional)</span></label><input type="text" value={settings.handoffMessage} disabled={!canEdit} onChange={(e) => setSettings({ ...settings, handoffMessage: e.target.value })} placeholder="Let me get a teammate to help you with this." /><div className="hint">Sent once when the agent hands off in live mode. Leave empty to stay silent.</div></div>
         </div>
       </div>
       {(canEdit || canMode) && <div className="row end"><button className="primary" disabled={busy}>{busy ? "Saving…" : <><Icon name="check" /> Save</>}</button></div>}

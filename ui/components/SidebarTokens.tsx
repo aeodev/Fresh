@@ -35,18 +35,13 @@ export function SidebarTokens() {
   };
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="row" style={{ gap: "0.8rem" }}>
-          <span className="tile-ico tone-violet" style={{ width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center" }}><Icon name="bot" /></span>
-          <div><h2>Freshchat sidebar app</h2><p>Take over / Hand back inside Freshchat, plus event forwarding to FreshQA.</p></div>
-        </div>
+    <div className="panel">
+      <div className="panel-head">
+        <div><h2>Sidebar app</h2><p>Take over and hand back from inside Freshchat, plus event forwarding to FreshQA.</p></div>
         <button className="primary" disabled={busy} onClick={() => void issue()}><Icon name="plus" /> Issue token</button>
       </div>
-      {fresh && (
-        <Alert tone="info"><strong>Copy this token now; it is not shown again.</strong><div style={{ marginTop: 6 }}><CopyBox value={fresh} /></div></Alert>
-      )}
-      <ol className="small" style={{ margin: "0 0 0.9rem", paddingLeft: "1.2rem", lineHeight: 1.8 }}>
+      {fresh && <div style={{ marginBottom: "1rem" }}><Alert tone="info"><div><strong>Copy this token now; it is not shown again.</strong><div style={{ marginTop: 8 }}><CopyBox value={fresh} /></div></div></Alert></div>}
+      <ol className="small" style={{ margin: "0 0 1rem", paddingLeft: "1.2rem", lineHeight: 1.9, color: "var(--ink-2)" }}>
         <li>Pack the app: <span className="kbd">cd sidebar-app && fdk pack --skip-coverage</span></li>
         <li>Freshchat → Admin Settings → Marketplace Apps → Manage Apps → Custom Apps → Developer Portal → upload the ZIP.</li>
         <li>On the install form enter <strong>FreshQA address</strong> = <span className="kbd">{host}</span> and the token above.</li>
@@ -56,8 +51,8 @@ export function SidebarTokens() {
           <thead><tr><th>Token</th><th>Created</th><th>Last used</th><th></th></tr></thead>
           <tbody>
             {tokens.map((t) => (
-              <tr key={t.id}><td>{t.label} <span className="mono muted tiny">{t.id}…</span></td><td className="muted small">{timeAgo(t.createdAt)}</td><td className="muted small">{timeAgo(t.lastUsedAt)}</td>
-                <td className="row end"><button className="small ghost" disabled={busy} onClick={() => { if (confirm("Revoke this token? The installed app stops working until you enter a new one.")) api(`${base}/${t.id}`, { method: "DELETE" }).then(load).then(() => toast.success("Token revoked.")).catch((e) => toast.error(e.message)); }}><Icon name="trash" /> Revoke</button></td></tr>
+              <tr key={t.id}><td>{t.label} <span className="mono mute tiny">{t.id}…</span></td><td className="mute small">{timeAgo(t.createdAt)}</td><td className="mute small">{timeAgo(t.lastUsedAt)}</td>
+                <td className="row end"><button className="sm ghost" disabled={busy} onClick={() => { if (confirm("Revoke this token? The installed app stops working until you enter a new one.")) api(`${base}/${t.id}`, { method: "DELETE" }).then(load).then(() => toast.success("Token revoked.")).catch((e) => toast.error(e.message)); }}><Icon name="trash" /> Revoke</button></td></tr>
             ))}
           </tbody>
         </table>

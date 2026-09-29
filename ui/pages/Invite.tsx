@@ -29,14 +29,14 @@ export function Invite() {
 
   const next = encodeURIComponent(`/invite/${token}`);
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "1rem" }}>
-      <div className="card page" style={{ maxWidth: 440, width: "100%", textAlign: "center" }}>
-        {invite && <div style={{ display: "grid", placeItems: "center", marginBottom: "0.8rem" }}><Avatar name={invite.companyName} size="lg" /></div>}
-        <h1>{invite ? `Join ${invite.companyName}` : "Team invite"}</h1>
+    <div className="auth">
+      <div className="card page" style={{ textAlign: "center" }}>
+        {invite && <div style={{ display: "grid", placeItems: "center", marginBottom: "1rem" }}><Avatar name={invite.companyName} size="lg" /></div>}
+        <h1 className="display">{invite ? <>Join <em>{invite.companyName}</em>.</> : "Team invite"}</h1>
         {error && <div style={{ marginTop: "1rem", textAlign: "left" }}><Alert tone="error">{error}</Alert></div>}
         {invite && (
           <>
-            <p className="muted" style={{ margin: "0.4rem 0 1.2rem" }}>You are invited as <strong>{invite.role}</strong>. Sent to {invite.email}.</p>
+            <p className="sub">You are invited as <strong>{invite.role}</strong>. Sent to {invite.email}.</p>
             {loading ? null : user ? (
               user.email.toLowerCase() === invite.email ? (
                 <button className="primary" disabled={busy} onClick={() => void accept()}>{busy ? "Joining…" : <><Icon name="check" /> Accept and join</>}</button>

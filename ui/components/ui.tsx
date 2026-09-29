@@ -73,7 +73,12 @@ export function Avatar({ name, kind = "person", size }: { name: string; kind?: "
 }
 
 export function Chip({ tone = "", dot = false, children }: { tone?: string; dot?: boolean; children: ReactNode }) {
-  return <span className={`chip ${tone}`}>{dot && <i className="dot" />}{children}</span>;
+  return <span className={`chip ${tone}`}>{dot && <i />}{children}</span>;
+}
+
+/** The agent's presence. Breathes when live, warm when in shadow, grey when off. */
+export function Orb({ mode }: { mode: "off" | "shadow" | "live" }) {
+  return <div className={`orb ${mode}`} aria-hidden="true" />;
 }
 
 export function Alert({ tone, children }: { tone: "error" | "info" | "warn"; children: ReactNode }) {
@@ -97,7 +102,7 @@ export function Skeleton({ lines = 3, title = true }: { lines?: number; title?: 
 export function EmptyState({ icon = "sparkles", title, children, action }: { icon?: IconName; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="empty">
-      <div className="art"><Icon name={icon} /></div>
+      <div className="glyph"><Icon name={icon} /></div>
       <strong>{title}</strong>
       {children && <div className="small">{children}</div>}
       {action && <div style={{ marginTop: "0.9rem" }}>{action}</div>}
@@ -105,12 +110,11 @@ export function EmptyState({ icon = "sparkles", title, children, action }: { ico
   );
 }
 
-export function PageHeader({ eyebrow, title, subtitle, actions }: { eyebrow?: string; title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
+export function PageHead({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
-    <div className="topbar">
+    <div className="head">
       <div>
-        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-        <h1>{title}</h1>
+        <h1 className="display">{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>
       {actions && <div className="row">{actions}</div>}
