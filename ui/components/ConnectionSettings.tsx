@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import type { FreshchatAgentOption, FreshchatConnection } from "../../shared/types";
 import { api, formatDate } from "../api";
@@ -115,10 +116,10 @@ export function ConnectionSettings() {
                 {connection.replyAgentName && <Avatar name={connection.replyAgentName} kind="bot" />}
                 {canManage ? (
                   <>
-                    <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="grow" style={{ width: "auto" }}>
+                    <Select label="Freshchat agent" value={agentId} onValueChange={(value) => setAgentId(value)} className="grow" style={{ width: "auto" }}>
                       <option value="">Choose an agent…</option>
                       {agents.map((a) => <option key={a.id} value={a.id}>{a.name}{a.email ? ` (${a.email})` : ""}</option>)}
-                    </select>
+                    </Select>
                     <button disabled={busy || !agentId || agentId === connection.replyAgentId} onClick={() => void saveAgent()}>Save</button>
                   </>
                 ) : <strong>{connection.replyAgentName ?? "not set"}</strong>}

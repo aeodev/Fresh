@@ -8,11 +8,12 @@ import { requireUser } from "../auth/middleware";
 import { withCompany } from "../companies/middleware";
 import { ingestEvent } from "../conversations/ingest";
 import { conversationObjectId } from "../conversations/object";
-import { getConversation, lastTurn, setState } from "../conversations/repo";
+import { disableAgentFromSidebar, enableAgentFromSidebar, getConversation, lastTurn } from "../conversations/repo";
 import { all, run } from "../db";
 import { logEvent } from "../events";
 import { getConnection } from "../freshchat/connection";
 import { normalizeFreshchatEvent } from "../freshchat/events";
+import { getActiveVersion } from "../knowledge/repo";
 import { randomToken, sha256Hex } from "../lib/crypto";
 import { publicBaseUrl } from "../lib/email";
 import { badRequest, readJson, str } from "../lib/http";
@@ -29,10 +30,10 @@ sidebarRoutes.get("/conversation", async (c) => {
   const state: SidebarState = {
     companyName: company.name,
     mode: settings.mode,
-    state: conversation?.state ?? "unknown",
-    stateReason: conversation?.state_reason ?? "FreshQA has not seen this conversation yet.",
+    state: conversation?.state === "resolved" || conversation?.freshchat_status?.toLowerCase() === "resolved" ? "resolved" : conversation?.sidebar_enabled_at ? conversation.state : "unknown",
+    stateReason: conversation?.sidebar_enabled_at ? conversation.state_reason : "Turn on FreshQA here to allow replies in this chat.",
     lastTurn: turn,
-    needsAttention: Boolean(conversation?.needs_attention),
+    needsAttention: Boolean(conversation?.sidebar_enabled_at && conversation.needs_attention),
     dashboardUrl: `${publicBaseUrl(c.env, c.req.raw)}/c/${company.slug}/conversations/${encodeURIComponent(conversationId)}`,
   };
   return c.json(state, { headers: { "Cache-Control": "no-store" } });
@@ -47,19 +48,27 @@ sidebarRoutes.post("/conversation", async (c) => {
   const actorName = str(actor.name, 120) || "Freshchat agent";
   if (!conversationId) throw badRequest("conversationId is required.");
   const stub = c.env.CONVERSATIONS.get(conversationObjectId(c.env, company.id, conversationId));
-  if (action === "takeover") {
-    await setState(c.env.DB, company.id, conversationId, "human", `${actorName} took over from the sidebar`, false);
+  if (action === "disable" || action === "takeover") {
+    await disableAgentFromSidebar(c.env.DB, company.id, conversationId, `${actorName} took over from the sidebar`);
     await logEvent(c.env.DB, company.id, "takeover", { by: actorName, via: "sidebar" }, conversationId);
-  } else if (action === "handback") {
-    await setState(c.env.DB, company.id, conversationId, "agent", `${actorName} handed back to the agent`, false);
+  } else if (action === "enable" || action === "handback") {
+    const [settings, connection, version] = await Promise.all([getSettings(c.env.DB, company.id), getConnection(c.env.DB, company.id), getActiveVersion(c.env.DB, company.id)]);
+    if (settings.mode !== "live") throw badRequest("Set this company's agent to Live in FreshQA settings first.");
+    if (!connection?.verified_at || !connection.reply_agent_id) throw badRequest("Connect Freshchat and choose a reply agent first.");
+    if (!version) throw badRequest("Activate a knowledge version first.");
+    const current = await getConversation(c.env.DB, company.id, conversationId);
+    if (current?.freshchat_status?.toLowerCase() === "resolved") throw badRequest("Reopen this conversation in Freshchat before turning on FreshQA.");
+    await enableAgentFromSidebar(c.env.DB, company.id, conversationId, "Reading this chat and checking for an open customer message");
     await logEvent(c.env.DB, company.id, "handback", { by: actorName, via: "sidebar" }, conversationId);
     await stub.notify({ companyId: company.id, conversationId, kind: "customer_message", debounceMs: 0 });
   } else if (action === "reply_now") {
+    const current = await getConversation(c.env.DB, company.id, conversationId);
+    if (!current?.sidebar_enabled_at || current.state !== "agent") throw badRequest("Turn on FreshQA for this chat in the Freshchat sidebar first.");
     await stub.notify({ companyId: company.id, conversationId, kind: "other", debounceMs: 0 });
     const result = await stub.runNow();
     return c.json({ ok: true, result });
   } else {
-    throw badRequest("action must be takeover, handback, or reply_now.");
+    throw badRequest("action must be enable, disable, or reply_now.");
   }
   return c.json({ ok: true });
 });

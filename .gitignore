@@ -9,3 +9,6 @@ sidebar-app/dist
 sidebar-app/.fdk
 sidebar-app/node_modules
 sidebar-app/coverage
+lab/.state/
+lab/.dev.vars
+lab/.lab-runtime.json

@@ -1,0 +1,6 @@
+[Unit]
+Description=Reconcile unanswered FreshQA conversations
+After=freshqa-kooya.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl --fail --silent --show-error --max-time 60 http://10.66.0.2:54321/__scheduled

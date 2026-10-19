@@ -1,5 +1,6 @@
 // The only place that talks to the Freshchat API. Five calls, one error type.
 // Docs: https://developers.freshchat.com/api/
+import { cleanFreshchatText } from "../../shared/freshchat-text";
 
 export type FreshchatAgent = {
   id: string;
@@ -71,7 +72,7 @@ export function normalizeBaseUrl(input: string) {
 
 export function extractText(parts: FreshchatMessagePart[] | undefined) {
   return (parts ?? [])
-    .map((part) => (typeof part.text?.content === "string" ? part.text.content : ""))
+    .map((part) => (typeof part.text?.content === "string" ? cleanFreshchatText(part.text.content) : ""))
     .filter(Boolean)
     .join("\n")
     .trim();

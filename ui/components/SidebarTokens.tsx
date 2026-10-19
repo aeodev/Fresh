@@ -41,13 +41,14 @@ export function SidebarTokens() {
         <button className="primary" disabled={busy} onClick={() => void issue()}><Icon name="plus" /> Issue token</button>
       </div>
       {fresh && <div style={{ marginBottom: "1rem" }}><Alert tone="info"><div><strong>Copy this token now; it is not shown again.</strong><div style={{ marginTop: 8 }}><CopyBox value={fresh} /></div></div></Alert></div>}
+      <a className="primary sidebar-download" href="/downloads/freshqa-sidebar-latest.zip" download="freshqa-sidebar.zip"><Icon name="download" /> Download Freshchat app ZIP</a>
       <ol className="small" style={{ margin: "0 0 1rem", paddingLeft: "1.2rem", lineHeight: 1.9, color: "var(--ink-2)" }}>
-        <li>Pack the app: <span className="kbd">cd sidebar-app && fdk pack --skip-coverage</span></li>
-        <li>Freshchat → Admin Settings → Marketplace Apps → Manage Apps → Custom Apps → Developer Portal → upload the ZIP.</li>
-        <li>On the install form enter <strong>FreshQA address</strong> = <span className="kbd">{host}</span> and the token above.</li>
+        <li>Issue a token and copy it now. It appears only once.</li>
+        <li>Download the ZIP above, then in Freshchat go to Admin Settings → Marketplace Apps → Manage Apps → Custom Apps → Developer Portal and upload it.</li>
+        <li>In the install form, set <strong>FreshQA address</strong> to <span className="kbd">{host}</span> and paste the token.</li>
       </ol>
       {tokens.length > 0 && (
-        <table>
+        <div className="table-wrap"><table>
           <thead><tr><th>Token</th><th>Created</th><th>Last used</th><th></th></tr></thead>
           <tbody>
             {tokens.map((t) => (
@@ -55,7 +56,7 @@ export function SidebarTokens() {
                 <td className="row end"><button className="sm ghost" disabled={busy} onClick={() => { if (confirm("Revoke this token? The installed app stops working until you enter a new one.")) api(`${base}/${t.id}`, { method: "DELETE" }).then(load).then(() => toast.success("Token revoked.")).catch((e) => toast.error(e.message)); }}><Icon name="trash" /> Revoke</button></td></tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

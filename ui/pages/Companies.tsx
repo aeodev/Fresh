@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router";
 import type { CompanySummary } from "../../shared/types";
 import { api } from "../api";
 import { AccountMenu } from "../components/AccountMenu";
-import { Alert, Avatar, Chip, Icon, Orb, Skeleton, greeting } from "../components/ui";
+import { Alert, Chip, Icon, Orb, Skeleton, greeting } from "../components/ui";
 import { useSession } from "../session";
 import { modeLabel } from "./Company";
 
@@ -65,8 +65,8 @@ export function Companies() {
               </Link>
             ))}
             {showForm && (
-              <form className="panel" onSubmit={create} style={{ borderStyle: "dashed", background: "transparent", boxShadow: "none" }}>
-                <div className="row" style={{ marginBottom: "0.75rem" }}><Avatar name={name || "New"} /><h2>New company</h2></div>
+              <form className="panel new-company-card" onSubmit={create}>
+                <div className="row" style={{ marginBottom: "0.75rem" }}><span className="new-company-mark" aria-hidden="true"><Icon name="building" size={20} /></span><h2>New company</h2></div>
                 <p className="mute small" style={{ marginBottom: "1.1rem" }}>One brand, one Freshchat account, one agent. You become the owner and can invite your team.</p>
                 <div className="field"><label>Company name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Support" required minLength={2} autoFocus /></div>
                 <div className="row">

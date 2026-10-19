@@ -8,7 +8,8 @@ import { useCompany } from "./Company";
 export function eventIcon(type: string): { icon: IconName; tone: string } {
   if (type.includes("error") || type.includes("rejected") || type.includes("failed")) return { icon: "alert", tone: "t-red" };
   if (type === "turn_sent") return { icon: "send", tone: "t-green" };
-  if (type === "turn_shadow") return { icon: "moon", tone: "t-amber" };
+  if (type === "turn_shadow" || type === "turn_review") return { icon: "moon", tone: "t-amber" };
+  if (type === "turn_silent") return { icon: "moon", tone: "t-gray" };
   if (type === "turn_handoff" || type === "takeover") return { icon: "hand", tone: "t-orange" };
   if (type === "handback") return { icon: "sparkles", tone: "t-green" };
   if (type === "turn_skipped") return { icon: "clock", tone: "t-gray" };

@@ -4,6 +4,7 @@ import { withCompany } from "../companies/middleware";
 import { logEvent } from "../events";
 import { badRequest, notFound, readJson, str } from "../lib/http";
 import { htmlToText, titleFromHtml } from "./html";
+import { formatKnowledge } from "./format";
 import {
   activateVersion,
   addDoc,
@@ -17,10 +18,23 @@ import {
   listDocs,
   listVersions,
   previewChunks,
+  replaceDoc,
+  versionChanges,
 } from "./repo";
 
 export const knowledgeRoutes = router();
 knowledgeRoutes.use("*", requireUser);
+
+/** Formatting suggestion only; the caller previews it and explicitly accepts it before saving. */
+knowledgeRoutes.post("/:slug/knowledge/format", withCompany("knowledge.write"), async (c) => {
+  const body = await readJson<{ content?: unknown }>(c);
+  const content = typeof body.content === "string" ? body.content : "";
+  if (content.trim().length < 30) throw badRequest("Paste at least 30 characters to format.");
+  if (content.length > 20_000) throw badRequest("A formatting section can contain up to 20,000 characters.");
+  const result = await formatKnowledge(c.env, c.get("company").id, content);
+  if (!result.ok) throw badRequest(result.error);
+  return c.json(result);
+});
 
 knowledgeRoutes.get("/:slug/knowledge", withCompany("knowledge.read"), async (c) => {
   const companyId = c.get("company").id;
@@ -46,7 +60,26 @@ knowledgeRoutes.post("/:slug/knowledge/versions", withCompany("knowledge.write")
 knowledgeRoutes.get("/:slug/knowledge/versions/:id", withCompany("knowledge.read"), async (c) => {
   const version = await getVersion(c.env.DB, c.get("company").id, c.req.param("id"));
   if (!version) throw notFound("Version not found.");
-  return c.json({ version, docs: await listDocs(c.env.DB, version.id) });
+  const [docs, changes] = await Promise.all([listDocs(c.env.DB, version.id), versionChanges(c.env.DB, c.get("company").id, version)]);
+  return c.json({ version, docs, changes });
+});
+
+/** Add new knowledge without making the user manage drafts: reuse the working draft or copy live first. */
+knowledgeRoutes.post("/:slug/knowledge/docs", withCompany("knowledge.write"), async (c) => {
+  const company = c.get("company");
+  const body = await readJson<{ title?: unknown; content?: unknown; sourceType?: unknown }>(c);
+  const title = str(body.title, 120);
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  if (!title || content.length < 20 || content.length > 1_500_000) throw badRequest("Enter a title and 20 to 1,500,000 characters of knowledge.");
+  let draft = await getDraftVersion(c.env.DB, company.id);
+  if (!draft) {
+    const active = await getActiveVersion(c.env.DB, company.id);
+    draft = await createDraft(c.env.DB, company.id, c.get("user").id, active?.id ?? null, "");
+    await logEvent(c.env.DB, company.id, "knowledge_draft_created", { versionId: draft.id, from: active?.id ?? null, by: c.get("user").email });
+  }
+  const result = await addDoc(c.env, { companyId: company.id, versionId: draft.id, title, content, sourceType: str(body.sourceType, 20) || "text" });
+  await logEvent(c.env.DB, company.id, "knowledge_doc_added", { versionId: draft.id, title, chunks: result.chunkCount, by: c.get("user").email });
+  return c.json({ ...result, version: await getVersion(c.env.DB, company.id, draft.id) }, 201);
 });
 
 knowledgeRoutes.get("/:slug/knowledge/versions/:id/chunks", withCompany("knowledge.read"), async (c) => {
@@ -95,6 +128,22 @@ knowledgeRoutes.post("/:slug/knowledge/versions/:id/docs", withCompany("knowledg
   return c.json({ ...result, docs: await listDocs(c.env.DB, version.id), version: await getVersion(c.env.DB, companyId, version.id) }, 201);
 });
 
+knowledgeRoutes.put("/:slug/knowledge/versions/:id/docs/:docId", withCompany("knowledge.write"), async (c) => {
+  const companyId = c.get("company").id;
+  const version = await getVersion(c.env.DB, companyId, c.req.param("id"));
+  if (!version) throw notFound("Version not found.");
+  if (version.status !== "draft") throw badRequest("Only a draft can be edited.");
+  const doc = await getDocContent(c.env.DB, version.id, c.req.param("docId"));
+  if (!doc) throw notFound("Document not found.");
+  const body = await readJson<{ title?: unknown; content?: unknown }>(c);
+  const title = str(body.title, 120);
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  if (!title || content.length < 20 || content.length > 1_500_000) throw badRequest("Enter a title and 20 to 1,500,000 characters of knowledge.");
+  const result = await replaceDoc(c.env, { companyId, versionId: version.id, docId: doc.id, title, content });
+  await logEvent(c.env.DB, companyId, "knowledge_doc_updated", { versionId: version.id, title, by: c.get("user").email });
+  return c.json({ ...result, docs: await listDocs(c.env.DB, version.id), version: await getVersion(c.env.DB, companyId, version.id) });
+});
+
 knowledgeRoutes.delete("/:slug/knowledge/versions/:id/docs/:docId", withCompany("knowledge.write"), async (c) => {
   const companyId = c.get("company").id;
   const version = await getVersion(c.env.DB, companyId, c.req.param("id"));
@@ -118,6 +167,10 @@ knowledgeRoutes.post("/:slug/knowledge/versions/:id/activate", withCompany("know
   const version = await getVersion(c.env.DB, companyId, c.req.param("id"));
   if (!version) throw notFound("Version not found.");
   if (version.chunkCount === 0) throw badRequest("Add at least one document before activating.");
+  const changes = await versionChanges(c.env.DB, companyId, version);
+  if (version.status === "draft" && changes.baseVersion !== null && !changes.added.length && !changes.updated.length && !changes.removed.length) {
+    throw badRequest("This version has no changes from live knowledge. Add or edit a document before activating it.");
+  }
   await activateVersion(c.env.DB, companyId, version.id);
   await logEvent(c.env.DB, companyId, "knowledge_activated", { versionId: version.id, number: version.number, by: c.get("user").email });
   return c.json({ versions: await listVersions(c.env.DB, companyId) });

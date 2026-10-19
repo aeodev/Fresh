@@ -45,9 +45,9 @@ export function Overview() {
     company.mode === "live" ? <>{name} is <em>live</em>.</> : company.mode === "shadow" ? <>{name} is <em>rehearsing</em>.</> : <>{name} is <em>asleep</em>.</>;
   const sentence =
     company.mode === "live"
-      ? `Answering every new customer message from ${active ? `knowledge v${active.number}` : "the active knowledge"}. Your team can take over any chat.`
+      ? `Ready to answer in chats you turn on from the Freshchat sidebar, using ${active ? `knowledge v${active.number}` : "the active knowledge"}. Your team can take over any chat.`
       : company.mode === "shadow"
-        ? "Drafting a reply for every customer message and keeping it here. Nothing reaches customers until you go live."
+        ? "Drafting for chats turned on from the Freshchat sidebar. Nothing reaches customers until you go live."
         : s.connected && s.knowledgeActive
           ? "Everything is wired up. Start in shadow mode to watch what it would say."
           : "Finish the steps below, then start in shadow mode.";

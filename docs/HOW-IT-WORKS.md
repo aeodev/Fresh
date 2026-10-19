@@ -38,8 +38,8 @@ Two ways to hear about new messages exist because Freshchat allows **one** accou
 4. **Open turn** (`agent/turn.ts`): every consecutive customer message after the last agent reply, joined into one question. If a turn for that message already exists, stop (this is the idempotency key; retries never double-send).
 5. **Retrieve** (`knowledge/retrieve.ts`): embed the question, score every chunk of the active knowledge version by `0.65 × cosine + 0.35 × keyword overlap`, keep the top 6.
 6. **Draft** (`agent/prompt.ts`, `agent/openai.ts`): one structured call returning `{answer, confidence, citations, needs_human, reason}`. The instructions forbid inventing anything not in the excerpts.
-7. **Gate** (`agent/gate.ts`), in order: handoff phrase in the message → handoff; model asked for a human → handoff; empty answer → handoff; no citations → handoff; confidence below threshold → handoff; shadow mode → draft only; else send.
-8. **Act**: send as the reply agent, or set state `human` + `needs_attention` (optionally posting the configured handoff message). Record the turn and an event.
+7. **Gate** (`agent/gate.ts`), in order: explicit handoff phrase in Live mode → handoff; model needs review, empty answer, missing citations, or low confidence → hold this turn for review and keep the agent on; shadow mode → draft only; else send.
+8. **Act**: send as the reply agent, hold a draft with `needs_attention` while preserving `agent` ownership, or hand over to `human` for an explicit customer request (optionally posting the configured handoff message). Record the turn, knowledge version, retrieved source scores, and decision.
 
 Every skip, send, handoff, and error writes a row to `events`, which is what the Activity tab and the conversation timeline show.
 
@@ -47,11 +47,11 @@ Every skip, send, handoff, and error writes a row to `events`, which is what the
 
 | state      | meaning                                              | leaves when                                                    |
 |------------|------------------------------------------------------|----------------------------------------------------------------|
-| `agent`    | the AI answers                                        | teammate replies, handoff, takeover, resolved                  |
-| `human`    | a person owns it; the AI is silent                    | hand back (sidebar or dashboard), conversation resolved         |
-| `resolved` | closed in Freshchat                                   | customer writes again or Freshchat reopens it → `agent`         |
+| `agent`    | the AI answers only with sidebar permission          | teammate replies, handoff, takeover, resolved                  |
+| `human`    | a person owns it; the AI is silent                    | turn on in the Freshchat sidebar, or conversation resolved      |
+| `resolved` | closed in Freshchat; sidebar permission is cleared   | reopen in Freshchat, then turn on in the sidebar again          |
 
-Company-level **mode**: `off` (nothing runs), `shadow` (drafts recorded, nothing sent), `live`.
+Company-level **mode**: `off` (nothing runs), `shadow` (drafts recorded for opted-in chats, nothing sent), `live` (replies only in chats explicitly turned on in the Freshchat sidebar). Existing synced chats remain off until opted in. Turning the sidebar switch off or resolving a chat clears that permission. Reopening a chat never turns the agent on automatically.
 
 ## Data model (`migrations/0001_init.sql`)
 
@@ -81,3 +81,11 @@ tests/                     unit tests for the pure logic
 ```
 
 Rules the code follows: all Freshchat calls go through `freshchat/client.ts`; every agent decision writes an event; no file is meant to grow past ~300 lines.
+
+## Guided support and reliability, 15 October 2026
+
+D1 embedding BLOBs are decoded from byte arrays into float32 vectors. Incompatible vector dimensions fall back to keyword search. A development-team request not to reply, including punctuation after the introduction, stays silent for that message only. Held, silent, and failed turns are consumed so their text is not repeatedly joined into new questions.
+
+Uncertain replies remain visible for review while the agent stays enabled. Only explicit customer requests for staff, actual teammate takeover, manual pause, and resolution transfer or stop automatic ownership. An uncertain send is flagged and is not replayed automatically; a new customer message is evaluated normally.
+
+Guided support uses recent conversation context to retrieve the next relevant source for short replies such as “done” or “I don’t see it.” The agent uses everyday language, gives one or two supported actions and a concrete check-in, then waits for the customer. It keeps prices, policies, caveats, and source terminology accurate, and does not claim to be human. Test Chat shows the exact version and whether it is active or draft. Saving a draft does not publish it.

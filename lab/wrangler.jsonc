@@ -1,0 +1,12 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "freshqa-connection-lab",
+  "main": "../worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [{ "binding": "DB", "database_name": "freshqa-lab", "database_id": "00000000-0000-4000-8000-000000000001", "migrations_dir": "../migrations" }],
+  "durable_objects": { "bindings": [{ "name": "CONVERSATIONS", "class_name": "ConversationObject" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ConversationObject"] }],
+  "vars": { "APP_NAME": "FreshQA Connection Lab", "PUBLIC_BASE_URL": "http://127.0.0.1:8788" },
+  "observability": { "enabled": true }
+}

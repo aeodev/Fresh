@@ -1,11 +1,14 @@
+import { Select } from "../components/Select";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 import type { GoldenTest, KnowledgeDoc, KnowledgeVersion } from "../../shared/types";
+import { hasSameText, splitForFormatting } from "../../shared/knowledge-format";
 import { api, formatDate, formatShort } from "../api";
 import { Alert, Chip, EmptyState, Icon, PageHead, Ring, Skeleton, useToast } from "../components/ui";
 import { useCompany } from "./Company";
 
 type State = { versions: KnowledgeVersion[]; active: { version: KnowledgeVersion; docs: KnowledgeDoc[] } | null; draft: { version: KnowledgeVersion; docs: KnowledgeDoc[] } | null };
-type RunFn = (fn: () => Promise<unknown>, notice?: string) => Promise<void>;
+type Changes = { added: string[]; updated: string[]; removed: string[]; unchanged: number; baseVersion: number | null };
+type RunFn = (fn: () => Promise<unknown>, notice?: string, selectDraft?: boolean) => Promise<boolean>;
 
 export function Knowledge() {
   const { company, allowed, reload } = useCompany();
@@ -15,6 +18,7 @@ export function Knowledge() {
   const [tests, setTests] = useState<GoldenTest[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [docs, setDocs] = useState<KnowledgeDoc[] | null>(null);
+  const [changes, setChanges] = useState<Changes | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const canWrite = allowed("knowledge.write");
@@ -25,6 +29,7 @@ export function Knowledge() {
     setState(k);
     setTests(t.tests);
     setSelected((cur) => (cur && k.versions.some((v) => v.id === cur) ? cur : (k.draft?.version.id ?? k.active?.version.id ?? k.versions[0]?.id ?? null)));
+    return k;
   }, [base]);
   useEffect(() => {
     load().catch((e) => setError(e.message));
@@ -32,18 +37,21 @@ export function Knowledge() {
   useEffect(() => {
     if (!selected) return setDocs(null);
     setDocs(null);
-    api<{ docs: KnowledgeDoc[] }>(`${base}/knowledge/versions/${selected}`).then((r) => setDocs(r.docs)).catch(() => setDocs([]));
+    api<{ docs: KnowledgeDoc[]; changes: Changes }>(`${base}/knowledge/versions/${selected}`).then((r) => { setDocs(r.docs); setChanges(r.changes); }).catch(() => { setDocs([]); setChanges(null); });
   }, [base, selected, state]);
 
-  const run: RunFn = async (fn, notice) => {
+  const run: RunFn = async (fn, notice, selectDraft = false) => {
     setBusy(true);
     try {
       await fn();
-      await load();
+      const refreshed = await load();
+      if (selectDraft && refreshed.draft) setSelected(refreshed.draft.version.id);
       await reload();
       if (notice) toast.success(notice);
+      return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Something went wrong.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -59,7 +67,7 @@ export function Knowledge() {
       <PageHead
         title={<>What the agent <em>knows</em>.</>}
         subtitle="Versioned, so nothing live changes by accident. Edit a draft, test it, activate it. Restore any version in one click."
-        actions={canWrite && !draft ? <button className="primary" disabled={busy} onClick={() => void run(() => api(`${base}/knowledge/versions`, { body: {} }), "Draft created.")}><Icon name="plus" /> {active ? "New draft from active" : "Start first draft"}</button> : undefined}
+        actions={canWrite && !draft ? <button className="primary" disabled={busy} onClick={() => void run(() => api(`${base}/knowledge/versions`, { body: {} }), "Draft created.", true)}><Icon name="plus" /> {active ? "New draft from active" : "Start first draft"}</button> : undefined}
       />
       <div className="kb">
         <aside>
@@ -74,7 +82,7 @@ export function Knowledge() {
         </aside>
         <div className="stack">
           {version ? (
-            <VersionPanel base={base} version={version} docs={docs} canWrite={canWrite} canActivate={canActivate} busy={busy} run={run} />
+            <VersionPanel key={version.id} base={base} version={version} docs={docs} changes={changes} draftExists={Boolean(draft)} canWrite={canWrite} canActivate={canActivate} busy={busy} run={run} />
           ) : (
             <div className="panel"><EmptyState icon="book" title="Add your first knowledge">Paste FAQs, policies, product info. Markdown headings become sections the agent can cite.</EmptyState></div>
           )}
@@ -85,28 +93,101 @@ export function Knowledge() {
   );
 }
 
-function VersionPanel({ base, version, docs, canWrite, canActivate, busy, run }: { base: string; version: KnowledgeVersion; docs: KnowledgeDoc[] | null; canWrite: boolean; canActivate: boolean; busy: boolean; run: RunFn }) {
+function VersionPanel({ base, version, docs, changes, draftExists, canWrite, canActivate, busy, run }: { base: string; version: KnowledgeVersion; docs: KnowledgeDoc[] | null; changes: Changes | null; draftExists: boolean; canWrite: boolean; canActivate: boolean; busy: boolean; run: RunFn }) {
   const [tab, setTab] = useState<"paste" | "upload" | "url">("paste");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const contentRef = useRef("");
+  const [formatting, setFormatting] = useState(false);
+  const [formatProgress, setFormatProgress] = useState<{ done: number; total: number } | null>(null);
+  const [formatSuggestion, setFormatSuggestion] = useState<{ original: string; formatted: string } | null>(null);
+  const [formatError, setFormatError] = useState<string | null>(null);
+  const [formatNotice, setFormatNotice] = useState<string | null>(null);
   const [url, setUrl] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [over, setOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const editable = version.status === "draft" && canWrite;
+  const isDraft = version.status === "draft";
+  const editable = canWrite && (isDraft || (version.status === "active" && !draftExists));
+
+  const updateContent = (next: string) => {
+    contentRef.current = next;
+    setContent(next);
+    setFormatSuggestion(null);
+    setFormatError(null);
+    setFormatNotice(null);
+  };
+  const tidy = async (original: string) => {
+    if (formatting || original.trim().length < 30) return;
+    setFormatting(true);
+    setFormatError(null);
+    setFormatNotice(null);
+    const sections = splitForFormatting(original);
+    setFormatProgress(sections.length > 1 ? { done: 0, total: sections.length } : null);
+    try {
+      const formattedSections: string[] = [];
+      let recoveredSections = 0;
+      let originalSections = 0;
+      for (let start = 0; start < sections.length; start += 3) {
+        const batch = sections.slice(start, start + 3);
+        const results = await Promise.all(batch.map(async (section, offset) => {
+          if (section.trim().length < 30) return { formatted: section, safeguard: "exact" as const };
+          try {
+            return await api<{ formatted: string; safeguard: "exact" | "recovered" | "original" }>(`${base}/knowledge/format`, { body: { content: section } });
+          } catch (error) {
+            throw new Error(`Section ${start + offset + 1}: ${error instanceof Error ? error.message : "Formatting is unavailable."}`, { cause: error });
+          }
+        }));
+        formattedSections.push(...results.map((result) => result.formatted));
+        recoveredSections += results.filter((result) => result.safeguard === "recovered").length;
+        originalSections += results.filter((result) => result.safeguard === "original").length;
+        if (sections.length > 1) setFormatProgress({ done: formattedSections.length, total: sections.length });
+      }
+      // A model may trim whitespace at a section edge; keep a separator between them.
+      const formatted = formattedSections.join(" ");
+      if (!hasSameText(original, formatted)) throw new Error("The suggestion changed an original character. Your paste was left untouched.");
+      if (contentRef.current !== original) return; // the user kept editing while AI was working
+      if (originalSections) setFormatNotice(`${originalSections} section${originalSections === 1 ? " was" : "s were"} kept unchanged because the AI changed too much text to recover safely.`);
+      else if (recoveredSections) setFormatNotice(`The AI changed characters in ${recoveredSections} section${recoveredSections === 1 ? "" : "s"}; those characters were restored from your original before this preview.`);
+      else if (formatted === original) setFormatNotice("No safe formatting changes were suggested.");
+      if (formatted !== original) setFormatSuggestion({ original, formatted });
+    } catch (error) {
+      if (contentRef.current === original) setFormatError(error instanceof Error ? error.message : "Formatting is unavailable.");
+    } finally {
+      setFormatting(false);
+      setFormatProgress(null);
+    }
+  };
 
   const addDoc = async (e: FormEvent) => {
     e.preventDefault();
     const body = tab === "url" ? { url: url.trim(), title: title.trim() } : { title: title.trim(), content, sourceType: tab === "upload" ? "file" : "text" };
-    await run(() => api(`${base}/knowledge/versions/${version.id}/docs`, { body }), "Added and indexed.");
+    const saved = await run(() => editingId
+      ? api(`${base}/knowledge/versions/${version.id}/docs/${editingId}`, { method: "PUT", body: { title: title.trim(), content } })
+      : api(isDraft ? `${base}/knowledge/versions/${version.id}/docs` : `${base}/knowledge/docs`, { body }),
+      editingId ? "Document updated in the working draft." : "Added to the working draft and indexed.", !isDraft);
+    if (!saved) return;
+    setEditingId(null);
     setTitle("");
-    setContent("");
+    updateContent("");
     setUrl("");
+  };
+  const editDoc = async (doc: KnowledgeDoc) => {
+    try {
+      const result = await api<{ doc: { content: string; title: string } }>(`${base}/knowledge/versions/${version.id}/docs/${doc.id}`);
+      setEditingId(doc.id);
+      setTab("paste");
+      setTitle(result.doc.title);
+      updateContent(result.doc.content);
+    } catch {
+      setFormatError("Could not load this document for editing.");
+    }
   };
   const readFile = (file: File | undefined) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setContent(String(reader.result ?? ""));
+      updateContent(String(reader.result ?? ""));
       if (!title) setTitle(file.name.replace(/\.[a-z]+$/i, ""));
     };
     reader.readAsText(file);
@@ -123,7 +204,7 @@ function VersionPanel({ base, version, docs, canWrite, canActivate, busy, run }:
       <div className="panel-head">
         <div>
           <div className="row"><h2 className="display" style={{ fontSize: "1.5rem" }}>Version {version.number}</h2><Chip tone={version.status} dot={version.status === "active"}>{version.status}</Chip></div>
-          <p>{version.status === "active" ? "This is what the agent reads right now. Create a draft to change it." : version.status === "draft" ? "Add documents, test it in Test chat, then activate." : `Archived ${formatDate(version.createdAt)}. Restore it to make it live again.`}</p>
+          <p>{version.status === "active" ? "The agent reads this version. Adding knowledge starts a working draft automatically." : version.status === "draft" ? "Add documents, test it in Test chat, then activate." : `Archived ${formatDate(version.createdAt)}. Restore it to make it live again.`}</p>
         </div>
         <div className="row">
           {version.status === "draft" && canActivate && version.chunkCount > 0 && <button className="green" disabled={busy} onClick={() => void run(() => api(`${base}/knowledge/versions/${version.id}/activate`, { body: {} }), `Version ${version.number} is live.`)}><Icon name="bolt" /> Activate</button>}
@@ -132,13 +213,22 @@ function VersionPanel({ base, version, docs, canWrite, canActivate, busy, run }:
         </div>
       </div>
 
+      {changes && <div className="version-changes">
+        <strong>{changes.baseVersion === null ? "First version" : `Changes from version ${changes.baseVersion}`}</strong>
+        {changes.added.length + changes.updated.length + changes.removed.length === 0 ? <span className="mute small">No changes yet. Add a document before publishing.</span> : (
+          <div className="row"><span className="chip ok">+ {changes.added.length} added</span><span className="chip info">{changes.updated.length} updated</span><span className="chip warn">− {changes.removed.length} removed</span><span className="mute tiny">{changes.unchanged} unchanged</span></div>
+        )}
+        {[...changes.added.map((name) => `Added: ${name}`), ...changes.updated.map((name) => `Updated: ${name}`), ...changes.removed.map((name) => `Removed: ${name}`)].length > 0 && <details><summary className="link small">See document changes</summary><ul className="small">{changes.added.map((name) => <li key={`a-${name}`}>Added: {name}</li>)}{changes.updated.map((name) => <li key={`u-${name}`}>Updated: {name}</li>)}{changes.removed.map((name) => <li key={`r-${name}`}>Removed: {name}</li>)}</ul></details>}
+      </div>}
+
       {docs === null ? <Skeleton lines={3} title={false} /> : docs.length === 0 ? <p className="mute" style={{ marginBottom: "1rem" }}>No documents in this version yet.</p> : (
         <div className="stack" style={{ gap: "0.6rem", marginBottom: editable ? "1.75rem" : 0 }}>
           {docs.map((d) => (
             <div key={d.id} className="doc">
               <span className="ico"><Icon name={d.sourceType === "url" ? "globe" : "file"} /></span>
               <div className="grow"><strong className="truncate" style={{ display: "block" }}>{d.title}</strong><span className="mute tiny">{d.sourceType} · {d.charCount.toLocaleString()} characters · added {formatDate(d.createdAt)}</span></div>
-              {editable && <button className="ghost icon" disabled={busy} title="Remove" onClick={() => void run(() => api(`${base}/knowledge/versions/${version.id}/docs/${d.id}`, { method: "DELETE" }), "Removed.")}><Icon name="trash" size={16} /></button>}
+              {isDraft && editable && <button className="ghost sm" disabled={busy} onClick={() => void editDoc(d)}>Edit</button>}
+              {isDraft && editable && <button className="ghost icon" disabled={busy} title="Remove" onClick={() => void run(() => api(`${base}/knowledge/versions/${version.id}/docs/${d.id}`, { method: "DELETE" }), "Removed.")}><Icon name="trash" size={16} /></button>}
             </div>
           ))}
         </div>
@@ -146,8 +236,9 @@ function VersionPanel({ base, version, docs, canWrite, canActivate, busy, run }:
 
       {editable && (
         <form onSubmit={addDoc}>
+          {editingId && <div className="row between" style={{ marginBottom: "1rem" }}><strong>Editing document</strong><button type="button" className="ghost sm" onClick={() => { setEditingId(null); setTitle(""); updateContent(""); }}>Cancel edit</button></div>}
           <div className="tabs" style={{ marginBottom: "1.25rem" }}>
-            {(["paste", "upload", "url"] as const).map((t) => <button key={t} type="button" className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t === "paste" ? "Paste text" : t === "upload" ? "Upload file" : "Web page"}</button>)}
+            {(["paste", "upload", "url"] as const).filter((t) => (isDraft || t !== "url") && (!editingId || t === "paste")).map((t) => <button key={t} type="button" className={tab === t ? "on" : ""} onClick={() => setTab(t)}>{t === "paste" ? "Paste text" : t === "upload" ? "Upload file" : "Web page"}</button>)}
           </div>
           {tab === "upload" && (
             <div className={`dropzone ${over ? "over" : ""}`} onDragOver={(e) => { e.preventDefault(); setOver(true); }} onDragLeave={() => setOver(false)} onDrop={onDrop} onClick={() => fileRef.current?.click()} role="button" tabIndex={0} style={{ marginBottom: "1.25rem" }}>
@@ -158,8 +249,24 @@ function VersionPanel({ base, version, docs, canWrite, canActivate, busy, run }:
           )}
           {tab === "url" && <div className="field"><label>Page URL</label><input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://help.example.com/shipping" /><div className="hint">Public help-centre pages work best. The title is taken from the page unless you set one.</div></div>}
           <div className="field"><label>Title{tab === "url" ? " (optional)" : ""}</label><input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Shipping and returns" /></div>
-          {tab === "paste" && <div className="field"><label>Content</label><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={"# Delivery\n\nOrders ship within 2 business days…"} /><div className="hint">Markdown headings become sections the agent can cite.</div></div>}
-          <div className="row end"><button className="primary" disabled={busy || !ready}>{busy ? "Indexing…" : <><Icon name="plus" /> Add document</>}</button></div>
+          {tab === "paste" && <div className="field"><label>Content</label><textarea value={content} onChange={(e) => updateContent(e.target.value)} onPaste={(e) => {
+            const pasted = e.clipboardData.getData("text");
+            if (!contentRef.current.trim() && pasted.length > 250 && (pasted.match(/\n/g) ?? []).length < 3) {
+              // Dense clipboard text is offered a whitespace-only suggestion automatically.
+              // The native paste still happens; the suggestion never replaces it until accepted.
+              setTimeout(() => void tidy(contentRef.current), 0);
+            }
+          }} placeholder={"# Delivery\n\nOrders ship within 2 business days…"} /><div className="hint">Markdown headings become sections the agent can cite. Long pastes are formatted in sections automatically.</div></div>}
+          {(tab === "paste" || tab === "upload") && content.trim().length >= 30 && <div className="row" style={{ marginBottom: "0.85rem" }}><button type="button" className="sm" disabled={formatting || busy} onClick={() => void tidy(content)}><Icon name="sparkles" size={16} /> {formatting ? "Tidying spacing…" : "Tidy formatting with AI"}</button><span className="mute tiny">Repairs broken letter spacing; every original character is checked.</span></div>}
+          {formatProgress && <div className="mute small" role="status">Formatting {formatProgress.done} of {formatProgress.total} sections…</div>}
+          {formatError && <Alert tone="warn">{formatError}</Alert>}
+          {formatNotice && <Alert tone="info">{formatNotice}</Alert>}
+          {formatSuggestion && <div className="format-preview" role="region" aria-label="Formatting suggestion">
+            <div className="row between"><strong>Formatting preview</strong><span className="mute tiny">Only whitespace changed; every original character matches</span></div>
+            <div className="format-preview-grid"><div><span className="label">Original</span><pre>{formatSuggestion.original}</pre></div><div><span className="label">Suggested</span><pre>{formatSuggestion.formatted}</pre></div></div>
+            <div className="row end"><button type="button" className="ghost" onClick={() => setFormatSuggestion(null)}>Keep original</button><button type="button" className="primary" onClick={() => { updateContent(formatSuggestion.formatted); }}>Use suggested layout</button></div>
+          </div>}
+          <div className="row end"><button className="primary" disabled={busy || !ready}>{busy ? "Indexing…" : <>{!editingId && <Icon name="plus" />} {editingId ? "Save changes" : isDraft ? "Add document" : "Add to new draft"}</>}</button></div>
         </form>
       )}
     </div>
@@ -173,7 +280,7 @@ function GoldenTests({ base, tests, versions, canWrite, busy, run }: { base: str
   const passed = tests.filter((t) => t.lastResult === "pass").length;
   const add = async (e: FormEvent) => {
     e.preventDefault();
-    await run(() => api(`${base}/agent/tests`, { body: { question, expected } }), "Test added.");
+    if (!await run(() => api(`${base}/agent/tests`, { body: { question, expected } }), "Test added.")) return;
     setQuestion("");
     setExpected("");
   };
@@ -181,15 +288,15 @@ function GoldenTests({ base, tests, versions, canWrite, busy, run }: { base: str
     <div className="panel">
       <div className="panel-head">
         <div className="row" style={{ gap: "1rem" }}>
-          <Ring value={tests.length ? passed / tests.length : 0} label={tests.length ? `${passed}/${tests.length}` : "—"} />
+          <Ring value={tests.length ? passed / tests.length : 0} label={tests.length ? `${passed}/${tests.length}` : "0/0"} />
           <div><h2>Golden tests</h2><p>Questions with the answer you expect. Run them before activating a draft or going live.</p></div>
         </div>
         {canWrite && tests.length > 0 && (
           <div className="row">
-            <select value={versionId} onChange={(e) => setVersionId(e.target.value)} style={{ width: "auto" }}>
+            <Select label="Evaluation knowledge version" value={versionId} onValueChange={(value) => setVersionId(value)} style={{ width: "auto" }}>
               <option value="">Active version</option>
               {versions.filter((v) => v.status !== "archived").map((v) => <option key={v.id} value={v.id}>v{v.number} {v.status}</option>)}
-            </select>
+            </Select>
             <button className="primary" disabled={busy} onClick={() => void run(() => api(`${base}/agent/tests/run`, { body: { versionId: versionId || undefined } }), "Tests finished.")}><Icon name="play" /> {busy ? "Running…" : "Run tests"}</button>
           </div>
         )}

@@ -1,3 +1,4 @@
+import { Select } from "./Select";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ROLE_DESCRIPTIONS, type Role } from "../../shared/rbac";
 import type { Invite, Member } from "../../shared/types";
@@ -59,9 +60,9 @@ export function MembersPanel() {
               <Avatar name={m.name} />
               <div className="grow"><strong>{m.name}</strong>{m.userId === user?.id && <span className="mute small"> (you)</span>}<div className="mute tiny">{m.email} · joined {timeAgo(m.joinedAt)}</div></div>
               {editable ? (
-                <select value={m.role} disabled={busy} style={{ width: "auto" }} onChange={(e) => { const next = e.target.value as Role; if (next === "owner" && !confirm(`Make ${m.name} an owner? Owners have full control.`)) return; void wrap(() => api(`${base}/members/${m.userId}`, { method: "PATCH", body: { role: next } }), "Role updated."); }}>
+                <Select label="Member role" value={m.role} disabled={busy} style={{ width: "auto" }} onValueChange={(value) => { const next = value as Role; if (next === "owner" && !confirm(`Make ${m.name} an owner? Owners have full control.`)) return; void wrap(() => api(`${base}/members/${m.userId}`, { method: "PATCH", body: { role: next } }), "Role updated."); }}>
                   {(company.role === "owner" ? (["owner", "admin", "member", "viewer"] as Role[]) : roles).map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
+                </Select>
               ) : <Chip tone={m.role === "owner" ? "info" : ""}>{m.role}</Chip>}
               {editable && m.role !== "owner" && <button className="ghost icon" disabled={busy} title="Remove" onClick={() => { if (confirm(`Remove ${m.name}?`)) void wrap(() => api(`${base}/members/${m.userId}`, { method: "DELETE" }), "Member removed."); }}><Icon name="trash" size={16} /></button>}
             </li>
@@ -73,7 +74,7 @@ export function MembersPanel() {
           <div className="hairline" />
           <form onSubmit={invite} className="row" style={{ alignItems: "flex-end" }}>
             <div className="field grow" style={{ marginBottom: 0 }}><label>Invite by email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teammate@company.com" required /></div>
-            <div className="field" style={{ marginBottom: 0 }}><label>Role</label><select value={role} onChange={(e) => setRole(e.target.value as Role)} style={{ width: "auto" }}>{roles.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{r}</option>)}</select></div>
+            <div className="field" style={{ marginBottom: 0 }}><label>Role</label><Select label="Member role" value={role} onValueChange={(value) => setRole(value as Role)} style={{ width: "auto" }}>{roles.filter((r) => r !== "owner").map((r) => <option key={r} value={r}>{r}</option>)}</Select></div>
             <button className="primary" disabled={busy}><Icon name="mail" /> Send invite</button>
           </form>
           <p className="mute tiny" style={{ marginTop: 8 }}>{ROLE_DESCRIPTIONS[role]}</p>

@@ -3,7 +3,7 @@ import type { Role } from "./rbac";
 
 export type AgentMode = "off" | "shadow" | "live";
 export type ConversationState = "agent" | "human" | "resolved";
-export type TurnDecision = "sent" | "shadow" | "handoff" | "error";
+export type TurnDecision = "sent" | "shadow" | "handoff" | "error" | "silent" | "review";
 
 export type User = { id: string; email: string; name: string; createdAt: string };
 
@@ -83,6 +83,7 @@ export type GoldenTest = {
 export type Citation = { chunkId: string; heading: string; excerpt: string; score: number };
 
 export type Draft = {
+  conversationalVerified?: boolean;
   answer: string;
   confidence: number;
   citations: Citation[];
@@ -95,11 +96,16 @@ export type Draft = {
 export type ConversationRow = {
   id: string;
   state: ConversationState;
+  sidebarEnabled: boolean;
   stateReason: string;
   freshchatStatus: string | null;
   customerName: string | null;
   lastMessagePreview: string;
+  lastMessageAt: string | null;
+  lastMessageActorType: string | null;
+  lastMessageTurnId: string | null;
   lastCustomerMessageAt: string | null;
+  lastAgentMessageAt: string | null;
   turnCount: number;
   needsAttention: boolean;
   updatedAt: string;

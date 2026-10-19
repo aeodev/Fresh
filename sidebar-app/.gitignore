@@ -2,3 +2,4 @@ dist
 .fdk
 node_modules
 coverage
+.report.json

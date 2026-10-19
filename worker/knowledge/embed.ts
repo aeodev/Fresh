@@ -9,9 +9,10 @@ export function vectorToBlob(vector: Float32Array): Uint8Array {
 
 export function blobToVector(blob: ArrayBuffer | Uint8Array | number[] | null | undefined): Float32Array | null {
   if (!blob) return null;
-  if (Array.isArray(blob)) return new Float32Array(blob);
+  // D1 returns BLOBs as byte arrays, not arrays of decoded vector components.
+  if (Array.isArray(blob) && blob.some(value => !Number.isInteger(value) || value < 0 || value > 255)) return null;
   const bytes = blob instanceof Uint8Array ? blob : new Uint8Array(blob);
-  if (bytes.byteLength % 4 !== 0) return null;
+  if (!bytes.byteLength || bytes.byteLength % 4 !== 0) return null;
   return new Float32Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 }
 

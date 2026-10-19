@@ -2,6 +2,16 @@
 
 export type TurnMessage = { id: string; actorType: string; messageType: string; text: string; createdTime: string };
 
+export function unprocessedCustomerMessages<T extends TurnMessage>(messages: T[], pendingIds: string[], processedIds: Set<string>): T[] {
+  const pending = new Set(pendingIds);
+  const ordered = messages.filter(message => pending.has(message.id)).sort((a, b) => a.createdTime.localeCompare(b.createdTime));
+  let lastProcessed = -1;
+  for (let index = 0; index < ordered.length; index += 1) {
+    if (processedIds.has(ordered[index].id)) lastProcessed = index;
+  }
+  return ordered.slice(lastProcessed + 1);
+}
+
 /**
  * Every consecutive customer message after the last agent or bot reply, joined into one question.
  * Private notes and system messages are ignored. Returns null when the last word was ours.

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n worker,ui \"wrangler dev --port 8787\" \"vite --port 5173\"",
     "build": "vite build",
+    "pack:sidebar": "node scripts/pack-sidebar.mjs",
     "start": "npm run build && wrangler dev --port 8787",
     "deploy": "npm run build && wrangler deploy",
     "db:migrate": "wrangler d1 migrations apply freshqa --local",
@@ -14,9 +15,13 @@
     "test": "vitest run",
     "lint": "eslint .",
     "db:reset": "rm -rf .wrangler/state && wrangler d1 migrations apply freshqa --local",
-    "mock:freshchat": "node scripts/mock-freshchat.mjs"
+    "mock:freshchat": "node scripts/mock-freshchat.mjs",
+    "lab": "node lab/start.mjs",
+    "lab:check": "node lab/check.mjs",
+    "lab:check:failures": "node lab/check-failures.mjs"
   },
   "dependencies": {
+    "diff": "^8.0.4",
     "hono": "^4.13.10",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

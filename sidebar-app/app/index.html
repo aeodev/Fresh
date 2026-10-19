@@ -7,35 +7,34 @@
     <link rel="stylesheet" href="styles/style.css" />
   </head>
   <body>
-    <main id="root" class="shell">
+    <main class="shell">
       <header class="top">
-        <strong id="company">FreshQA</strong>
-        <span id="mode" class="pill">…</span>
-        <button id="refresh" class="icon" type="button" title="Refresh">↻</button>
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span class="brand-copy"><strong>FreshQA</strong><small id="company"></small></span>
+        <span id="mode" class="pill">Loading</span>
+        <button id="refresh" class="icon" type="button" aria-label="Refresh conversation">↻</button>
       </header>
 
-      <section id="loading" class="state">Loading…</section>
-      <section id="error" class="state error" hidden><strong>FreshQA is unavailable</strong><p id="error-text"></p></section>
+      <section id="loading" class="message">Opening this conversation…</section>
+      <section id="error" class="message error" hidden><strong>Could not load FreshQA</strong><p id="error-text"></p></section>
 
       <section id="body" hidden>
-        <div class="status">
-          <span id="state" class="pill">—</span>
-          <p id="state-reason" class="muted"></p>
+        <div class="control">
+          <div class="control-copy">
+            <strong id="status-title">Agent for this chat</strong>
+            <p id="status-copy"></p>
+          </div>
+          <button id="toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="Turn on FreshQA for this chat" data-action="enable"><span></span></button>
         </div>
 
+        <div id="attention" class="attention" hidden><span class="attention-dot"></span><span id="attention-text"></span></div>
+
         <div id="turn" class="turn" hidden>
-          <div class="turn-head"><span id="turn-decision" class="pill"></span><span id="turn-confidence" class="muted small"></span></div>
+          <div class="turn-head"><span class="eyebrow">Latest decision</span><span id="turn-decision" class="pill"></span></div>
           <p id="turn-answer"></p>
           <p id="turn-reason" class="muted small"></p>
         </div>
 
-        <div class="actions">
-          <button id="takeover" class="primary" type="button" data-action="takeover" hidden>Take over</button>
-          <button id="handback" class="primary" type="button" data-action="handback" hidden>Hand back to agent</button>
-          <button id="reply-now" type="button" data-action="reply_now" hidden>Reply now</button>
-        </div>
-        <p class="muted small" id="hint"></p>
-        <a id="open" class="link" href="#" target="_blank" rel="noreferrer">Open in FreshQA ↗</a>
       </section>
       <div id="toast" class="toast" role="status" hidden></div>
     </main>

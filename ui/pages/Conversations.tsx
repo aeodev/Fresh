@@ -1,20 +1,38 @@
+import { Select } from "../components/Select";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import type { ConversationDetail, ConversationRow, Turn } from "../../shared/types";
+import { cleanFreshchatText } from "../../shared/freshchat-text";
 import { api, formatDate, timeAgo } from "../api";
-import { Alert, Avatar, Chip, EmptyState, Icon, PageHead, Skeleton, useToast } from "../components/ui";
+import { ChatText } from "../components/ChatText";
+import { Alert, Avatar, Chip, EmptyState, Icon, Skeleton, useToast } from "../components/ui";
 import { eventIcon, summarize } from "./Activity";
 import { useCompany } from "./Company";
 
-const FILTERS: Array<{ key: string; label: string; query: string }> = [
-  { key: "all", label: "All", query: "" },
-  { key: "agent", label: "With the agent", query: "state=agent" },
-  { key: "human", label: "With people", query: "state=human" },
-  { key: "attention", label: "Attention", query: "attention=1" },
-  { key: "resolved", label: "Resolved", query: "state=resolved" },
-];
+const VIEWS = [
+  { key: "attention", label: "Needs attention" },
+  { key: "agent", label: "Agent handling" },
+  { key: "human", label: "Teammate handling" },
+  { key: "all", label: "All synced" },
+] as const;
+type ViewKey = (typeof VIEWS)[number]["key"];
+type StatusKey = "open" | "resolved" | "all";
+type ViewCounts = Record<ViewKey, number> & { total: number; openAttention: number };
 
-export function StateChip({ state }: { state: ConversationRow["state"] }) {
+function lastReplyLabel(row: ConversationRow) {
+  if (row.lastMessageActorType === "user") return "Customer replied";
+  if (row.lastMessageActorType === "agent") return row.lastMessageTurnId ? "Agent replied" : "Teammate replied";
+  if (row.lastMessageActorType === "bot") return "Bot replied";
+  return "No reply yet";
+}
+
+function customerWaiting(row: ConversationRow) {
+  return row.lastMessageActorType === "user" && row.lastCustomerMessageAt && row.freshchatStatus?.toLowerCase() !== "resolved"
+    ? `Customer waiting · ${timeAgo(row.lastCustomerMessageAt)}` : null;
+}
+
+export function StateChip({ state, sidebarEnabled = true }: { state: ConversationRow["state"]; sidebarEnabled?: boolean }) {
+  if (state === "agent" && !sidebarEnabled) return <Chip tone="off" dot>Off</Chip>;
   return <Chip tone={state} dot>{state === "agent" ? "Agent" : state === "human" ? "Person" : "Resolved"}</Chip>;
 }
 
@@ -22,62 +40,112 @@ export function Conversations() {
   const { company } = useCompany();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const active = FILTERS.find((f) => (f.key === "attention" ? params.get("attention") === "1" : f.query === (params.get("state") ? `state=${params.get("state")}` : ""))) ?? FILTERS[0];
+  const [params] = useSearchParams();
+  const requestedView = params.get("view") ?? (params.get("attention") === "1" ? "attention" : params.get("state") ?? (id ? "all" : "attention"));
+  const active = VIEWS.find((view) => view.key === requestedView) ?? VIEWS[3];
+  const requestedStatus = params.get("status") ?? (requestedView === "resolved" ? "resolved" : id ? "all" : "open");
+  const status: StatusKey = requestedStatus === "resolved" || requestedStatus === "all" ? requestedStatus : "open";
   const [rows, setRows] = useState<ConversationRow[] | null>(null);
+  const [limit, setLimit] = useState(200);
+  const [counts, setCounts] = useState<ViewCounts | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    api<{ conversations: ConversationRow[] }>(`/api/companies/${company.slug}/conversations?${active.query}&limit=100`).then((r) => setRows(r.conversations)).catch((e) => setError(e.message));
-  }, [company.slug, active.query, id]);
+    let live = true;
+    const load = () => api<{ conversations: ConversationRow[]; counts: ViewCounts }>(`/api/companies/${company.slug}/conversations?view=${active.key}&status=${status}&limit=${limit}`)
+      .then((result) => { if (live) { setRows(result.conversations); setCounts(result.counts); setError(null); } })
+      .catch((cause) => { if (live) setError(cause instanceof Error ? cause.message : "Could not load conversations."); });
+    void load();
+    const timer = setInterval(() => void load(), 8000);
+    return () => { live = false; clearInterval(timer); };
+  }, [company.slug, active.key, status, limit]);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle || !rows) return rows;
-    return rows.filter((c) => (c.customerName ?? "").toLowerCase().includes(needle) || c.lastMessagePreview.toLowerCase().includes(needle) || c.id.includes(needle));
+    return rows.filter((c) => (c.customerName ?? "").toLowerCase().includes(needle) || cleanFreshchatText(c.lastMessagePreview).toLowerCase().includes(needle) || c.id.includes(needle));
   }, [rows, q]);
 
   const open = (cid: string) => navigate(`/c/${company.slug}/conversations/${encodeURIComponent(cid)}${params.toString() ? `?${params}` : ""}`);
+  const chooseView = (key: ViewKey) => {
+    setRows(null);
+    setLimit(200);
+    navigate(`/c/${company.slug}/conversations?view=${key}&status=${status}`);
+  };
+  const chooseStatus = (nextStatus: StatusKey) => {
+    setRows(null);
+    setLimit(200);
+    navigate(`/c/${company.slug}/conversations?view=${active.key}&status=${nextStatus}`);
+  };
 
   return (
-    <>
-      <PageHead title={<>Every <em>conversation</em>.</>} subtitle="Who is talking to whom, and every decision the agent made along the way." />
+    <div className="conversation-page">
+      <header className="conversation-header">
+        <div className="conversation-title"><h1>Conversations</h1><span className="attention-total">{counts?.openAttention ?? "·"} need attention</span></div>
+        <p>See what needs a person, what the agent is handling, and the full chat history.</p>
+        <div className="conversation-nav">
+          <nav className="conversation-tabs" aria-label="Conversation work views">
+            {VIEWS.map((view) => <button key={view.key} type="button" className={active.key === view.key ? "on" : ""} aria-current={active.key === view.key ? "page" : undefined} onClick={() => chooseView(view.key)}>{view.label}<span>{counts?.[view.key] ?? "·"}</span></button>)}
+          </nav>
+          <label className="conversation-status">Freshchat status <Select label="Freshchat status" value={status} onValueChange={(value) => chooseStatus(value as StatusKey)}><option value="open">Open</option><option value="resolved">Resolved</option><option value="all">All statuses</option></Select></label>
+        </div>
+      </header>
       {error && <Alert tone="error">{error}</Alert>}
-      <div className="inbox">
+      <div className={`inbox ${id ? "thread-open" : ""}`}>
         <aside className="rail">
           <div className="tools">
+            <div className="list-head"><strong>{active.label}</strong><span>{counts?.[active.key] ?? "·"}</span></div>
             <div className="search"><Icon name="search" /><input type="search" placeholder="Search name or message" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-            <div className="pills">
-              {FILTERS.map((f) => <button key={f.key} type="button" className={f.key === active.key ? "on" : ""} onClick={() => setParams(f.query ? new URLSearchParams(f.query) : new URLSearchParams())}>{f.label}</button>)}
-            </div>
+            <span className="inbox-sync-note">Synced to FreshQA · newest first</span>
           </div>
           <div className="rows">
             {visible === null ? <div style={{ padding: "1rem" }}><Skeleton lines={5} title={false} /></div> : visible.length === 0 ? (
-              <EmptyState icon="chat" title={rows && rows.length ? "No matches" : "Nothing yet"}>{rows && rows.length ? "Try a different search." : "Conversations appear the moment Freshchat sends the first event."}</EmptyState>
+              <div className="inbox-list-empty">
+                <div className="inbox-list-empty-icon"><Icon name={rows && rows.length ? "search" : "chat"} size={20} /></div>
+                <strong>{q ? "No matching chats" : counts?.total ? "No chats in this view" : "No chats yet"}</strong>
+                <span>{q ? "Try another name or message." : counts?.total ? "Try another work view or Freshchat status." : "Customer chats will appear here once Freshchat is connected."}</span>
+              </div>
             ) : (
-              visible.map((c) => (
-                <div key={c.id} className={`convo ${c.id === id ? "on" : ""}`} onClick={() => open(c.id)} role="button" tabIndex={0}>
+              <>{visible.map((c) => (
+                <div key={c.id} className={`convo ${c.id === id ? "on" : ""}`} onClick={() => open(c.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(c.id); } }} role="button" tabIndex={0}>
                   <Avatar name={c.customerName || c.id} />
                   <div className="grow">
-                    <div className="name"><span className="truncate">{c.customerName || c.id.slice(0, 8)}</span><StateChip state={c.state} /></div>
-                    <div className="preview">{c.lastMessagePreview || c.stateReason || "—"}</div>
+                    <div className="name"><span className="truncate">{c.customerName || c.id.slice(0, 8)}</span><StateChip state={c.state} sidebarEnabled={c.sidebarEnabled} /></div>
+                    <div className="preview">{cleanFreshchatText(c.lastMessagePreview) || c.stateReason || "No preview"}</div>
+                    <div className="convo-signals"><span>{lastReplyLabel(c)}</span>{customerWaiting(c) && <span className="waiting">{customerWaiting(c)}</span>}{c.needsAttention && <span className="attention-reason">{c.stateReason || "Review needed"}</span>}</div>
                   </div>
-                  <time>{timeAgo(c.updatedAt)}</time>
+                  <time>{timeAgo(c.lastMessageAt ?? c.updatedAt)}</time>
                 </div>
-              ))
+              ))}
+              {rows && counts && limit < 2000 && rows.length < counts[active.key] && <button type="button" className="inbox-more" onClick={() => setLimit((current) => Math.min(2000, current + 200))}>Show more · {rows.length} of {counts[active.key]}</button>}
+              </>
             )}
           </div>
         </aside>
         <section className="stage">
-          {id ? <Thread key={id} id={id} /> : <EmptyState icon="chat" title="Pick a conversation">The transcript, the agent's reasoning, and the take-over controls show up here.</EmptyState>}
+          {id && <button type="button" className="mobile-inbox-back ghost" onClick={() => navigate(`/c/${company.slug}/conversations?${params}`)}><Icon name="arrowLeft" /> Back to conversations</button>}
+          {id ? <Thread key={id} id={id} /> : rows?.length ? (
+            <div className="inbox-start"><Icon name="chat" size={28} /><h2>Choose a conversation</h2><p>See the messages, source-backed answers, and handoff controls.</p></div>
+          ) : counts?.total ? (
+            <div className="inbox-start"><Icon name="chat" size={28} /><h2>No chats in this view</h2><p>Try another work view or Freshchat status.</p></div>
+          ) : (
+            <div className="inbox-setup">
+              <span className="inbox-setup-icon"><Icon name="chat" size={28} /></span>
+              <h2>Chats will land here</h2>
+              <p>Connect Freshchat, install the sidebar app, then send a message through your customer widget. This inbox will show the agent's decisions as they happen.</p>
+              <div className="inbox-setup-steps"><span>1 · Connect Freshchat</span><span>2 · Install sidebar</span><span>3 · Send a test chat</span></div>
+              <Link className="primary inbox-setup-link" to={`/c/${company.slug}/settings#connection`}>Open connection setup <Icon name="arrowRight" size={16} /></Link>
+            </div>
+          )}
         </section>
       </div>
-    </>
+    </div>
   );
 }
 
 function Why({ turn }: { turn: Turn }) {
+  if (turn.decision === "silent") return <div className="why"><Chip tone="silent">Stayed quiet</Chip><div style={{ marginTop: 6 }}>{turn.reason}</div></div>;
   const pct = Math.round(turn.confidence * 100);
   return (
     <div className="why">
@@ -88,7 +156,7 @@ function Why({ turn }: { turn: Turn }) {
       {turn.citations.length > 0 && (
         <details style={{ marginTop: 6 }}>
           <summary className="link small">Sources</summary>
-          {turn.citations.map((c) => <div key={c.chunkId} className="small" style={{ marginTop: 6 }}><strong>{c.heading}</strong> — {c.excerpt}</div>)}
+          {turn.citations.map((c) => <div key={c.chunkId} className="small" style={{ marginTop: 6 }}><strong>{c.heading}</strong>: {c.excerpt}</div>)}
         </details>
       )}
     </div>
@@ -96,6 +164,8 @@ function Why({ turn }: { turn: Turn }) {
 }
 
 function Thread({ id }: { id: string }) {
+  const [sourceParams] = useSearchParams();
+  const sourceMessage = sourceParams.get("message");
   const { company, allowed } = useCompany();
   const toast = useToast();
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
@@ -109,6 +179,13 @@ function Thread({ id }: { id: string }) {
     const timer = setInterval(() => void load(), 8000);
     return () => clearInterval(timer);
   }, [load]);
+
+  const sourceLoaded = Boolean(detail);
+  useEffect(() => {
+    if (!sourceMessage || !sourceLoaded) return;
+    const element = document.getElementById(`source-message-${sourceMessage}`);
+    element?.scrollIntoView({ block: "center" });
+  }, [sourceMessage, sourceLoaded]);
 
   const act = async (path: string, body: Record<string, unknown>, done: string) => {
     setBusy(true);
@@ -136,34 +213,35 @@ function Thread({ id }: { id: string }) {
       <div className="stage-head">
         <Avatar name={customer} size="lg" />
         <div className="grow">
-          <div className="row"><h2 style={{ fontSize: "1.25rem" }}>{customer}</h2><StateChip state={conversation.state} />{conversation.needsAttention && <Chip tone="warn">needs attention</Chip>}</div>
-          <div className="mute small">{conversation.stateReason} <span className="mono mute-2 tiny">· {conversation.id}</span></div>
+          <div className="row"><h2 style={{ fontSize: "1.25rem" }}>{customer}</h2><StateChip state={conversation.state} sidebarEnabled={conversation.sidebarEnabled} />{conversation.needsAttention && <Chip tone="warn">needs attention</Chip>}</div>
+          <div className="mute small">{conversation.sidebarEnabled ? conversation.stateReason : "Turn on FreshQA in this chat's Freshchat sidebar to test replies."} <span className="mono mute-2 tiny">· {conversation.id}</span></div>
         </div>
         {canAct && (
           <div className="row">
-            {conversation.state === "agent" && <button className="danger" disabled={busy} onClick={() => void act("/state", { state: "human" }, "You own this chat now.")}><Icon name="hand" /> Take over</button>}
-            {conversation.state === "human" && <button className="green" disabled={busy} onClick={() => void act("/state", { state: "agent" }, "Handed back to the agent.")}><Icon name="sparkles" /> Hand back</button>}
-            {conversation.state !== "resolved" && <button disabled={busy} onClick={() => void act("/run", {}, "Agent ran.")}><Icon name="bolt" /> Reply now</button>}
+            {conversation.sidebarEnabled && conversation.state === "agent" && <button className="danger" disabled={busy} onClick={() => void act("/state", { state: "human" }, "You own this chat now.")}><Icon name="hand" /> Take over</button>}
+            {conversation.sidebarEnabled && conversation.state === "agent" && <button disabled={busy} onClick={() => void act("/run", {}, "Agent ran.")}><Icon name="bolt" /> Reply now</button>}
           </div>
         )}
       </div>
+      {sourceMessage && <div className="source-conversation-banner"><Link className="link small" to={`/c/${company.slug}/analysis`}>← Back to analysis</Link><span className="small mute">{messages.some(m=>m.id===sourceMessage) ? "Referenced reply highlighted below" : "The referenced message is no longer available."}</span></div>}
       <div className="thread chat">
         {messages.length === 0 && <EmptyState icon="chat" title="No messages stored yet" />}
         {messages.map((m) => {
+          const text = cleanFreshchatText(m.text);
           const kind = m.messageType === "private" ? "private" : m.actorType === "user" ? "customer" : m.actorType === "system" ? "system" : "agent";
           const turn = m.turnId ? turnById.get(m.turnId) : null;
           const ours = kind === "agent" && Boolean(turn);
           const draft = m.actorType === "user" ? pending.get(m.id) : null;
           return (
             <div key={m.id} style={{ display: "contents" }}>
-              <div className={`msg ${kind} ${kind === "agent" && !ours ? "human" : ""}`}>
+              {text ? <div id={`source-message-${m.id}`} className={`msg ${kind} ${kind === "agent" && !ours ? "human" : ""} ${sourceMessage===m.id ? "analysis-source-message" : ""}`}>
                 {kind === "customer" && <Avatar name={customer} />}
                 {kind === "agent" && (ours ? <Avatar name="Agent" kind="bot" /> : <Avatar name={m.actorId ?? "Agent"} kind="human" />)}
                 <div className="bubble">
-                  {m.text || <em style={{ opacity: 0.7 }}>(non-text message)</em>}
+                  <ChatText text={text} />
                   <span className="meta">{kind === "customer" ? customer : kind === "agent" ? (ours ? "FreshQA agent" : "Teammate") : kind === "private" ? "Private note" : "System"} · {formatDate(m.createdTime)}</span>
                 </div>
-              </div>
+              </div> : <div className="thread-event">{kind === "private" ? "Private note" : "Attachment or rich message"} · {formatDate(m.createdTime)}</div>}
               {turn && <Why turn={turn} />}
               {draft && <Why turn={draft} />}
             </div>

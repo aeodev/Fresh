@@ -3,7 +3,7 @@
   "modules": {
     "common": {
       "requests": {
-        "getConversationState": { "maxAttempts": 2, "retryDelay": 300 },
+        "getConversationState": { "maxAttempts": 1 },
         "postConversationAction": { "maxAttempts": 1 },
         "postFreshqaEvent": { "maxAttempts": 3, "retryDelay": 500 },
         "postFreshqaInstall": { "maxAttempts": 2, "retryDelay": 500 }
@@ -24,5 +24,6 @@
       }
     }
   },
+  "scripts": { "fdk-unit-test": "vitest run --coverage" },
   "engines": { "node": "24.11.0", "fdk": "10.1.9" }
 }

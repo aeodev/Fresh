@@ -13,7 +13,7 @@
     {
       "binding": "DB",
       "database_name": "freshqa",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "ff6e17e9-6d5e-4392-a0e6-9291040a88b2",
       "migrations_dir": "migrations"
     }
   ],

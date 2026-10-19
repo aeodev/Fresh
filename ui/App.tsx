@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import { ToastProvider } from "./components/ui";
+import { Analysis } from "./pages/Analysis";
 import { Activity } from "./pages/Activity";
 import { Companies } from "./pages/Companies";
 import { Company } from "./pages/Company";
@@ -36,6 +37,7 @@ export function App() {
             <Route path="conversations/:id" element={<Conversations />} />
             <Route path="test" element={<TestChat />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="analysis" element={<Analysis />} />
             <Route path="activity" element={<Activity />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

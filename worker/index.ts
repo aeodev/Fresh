@@ -1,7 +1,10 @@
 // Entry point. Routes are mounted here and nowhere else; read this file to see the whole API surface.
 
 import { Hono } from "hono";
+import { analysisRoutes } from "./analysis/routes";
+import { processAnalyses } from "./analysis/engine";
 import { agentRoutes } from "./agent/routes";
+import { correctionRoutes } from "./agent/correction-routes";
 import type { AppEnv } from "./app";
 import { authRoutes } from "./auth/routes";
 import { companyRoutes, inviteRoutes } from "./companies/routes";
@@ -25,13 +28,15 @@ app.onError((error, c) => {
   return c.json({ error: error instanceof Error ? error.message : "Something went wrong." }, 500);
 });
 
-app.get("/api/health", (c) => c.json({ ok: true, app: c.env.APP_NAME, time: new Date().toISOString() }));
+app.get("/api/health", (c) => c.json({ ok: true, app: c.env.APP_NAME, release: "2026-10-15-conversation-analysis", time: new Date().toISOString() }));
 
 app.route("/api/auth", authRoutes); //              signup, login, logout, me
 app.route("/api/companies", companyRoutes); //      companies, members, invites
 app.route("/api/companies", connectionRoutes); //   :slug/connection…
 app.route("/api/companies", knowledgeRoutes); //    :slug/knowledge…
 app.route("/api/companies", agentRoutes); //        :slug/agent/settings, test-chat, tests
+app.route("/api/companies", correctionRoutes);
+app.route("/api/companies", analysisRoutes);
 app.route("/api/companies", conversationRoutes); // :slug/conversations…, :slug/events
 app.route("/api/companies", sidebarTokenRoutes); // :slug/sidebar-tokens
 app.route("/api/invites", inviteRoutes); //         :token, :token/accept
@@ -50,7 +55,7 @@ async function reconcile(env: Env) {
     env.DB,
     `SELECT c.company_id, c.id FROM conversations c
      JOIN agent_settings s ON s.company_id = c.company_id
-     WHERE s.mode != 'off' AND c.state = 'agent' AND c.last_customer_message_at > ?
+     WHERE s.mode != 'off' AND c.state = 'agent' AND c.sidebar_enabled_at IS NOT NULL AND c.last_customer_message_at > ?
        AND (c.last_agent_message_at IS NULL OR c.last_agent_message_at < c.last_customer_message_at)
      ORDER BY c.last_customer_message_at DESC LIMIT 50`,
     since,
@@ -64,5 +69,5 @@ async function reconcile(env: Env) {
 
 export default {
   fetch: app.fetch,
-  scheduled: (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(reconcile(env)),
+  scheduled: (_controller: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(Promise.allSettled([reconcile(env), processAnalyses(env)])),
 } satisfies ExportedHandler<Env>;

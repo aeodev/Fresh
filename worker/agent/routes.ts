@@ -8,7 +8,7 @@ import { getConnection } from "../freshchat/connection";
 import { badRequest, num, readJson, str } from "../lib/http";
 import { newId } from "../lib/ids";
 import { getActiveVersion, getVersion } from "../knowledge/repo";
-import { decide, detectHandoffIntent } from "./gate";
+import { decide, detectHandoffIntent, detectSilenceIntent } from "./gate";
 import { structuredCompletion } from "./openai";
 import { draftAnswer, getSettings } from "./pipeline";
 import { JUDGE_INSTRUCTIONS, JUDGE_SCHEMA, type JudgeOutput, type TranscriptLine } from "./prompt";
@@ -74,6 +74,9 @@ agentRoutes.post("/:slug/agent/test-chat", withCompany("knowledge.read"), async 
   const version = versionId ? await getVersion(c.env.DB, company.id, versionId) : await getActiveVersion(c.env.DB, company.id);
   if (!version) throw badRequest("Add knowledge first: activate a version or pick a draft to test.");
   const [settings, connection] = await Promise.all([getSettings(c.env.DB, company.id), getConnection(c.env.DB, company.id)]);
+  if (detectSilenceIntent(last.text)) {
+    return c.json({ draft: null, gate: { decision: "silent", reason: "Customer asked for no reply to this message." }, typingPace: settings.typing_pace, version: { id: version.id, number: version.number, status: version.status }, retrieved: [] });
+  }
   const handoffIntent = detectHandoffIntent(last.text, settings.handoff_keywords);
   const result = handoffIntent
     ? null
@@ -83,18 +86,19 @@ agentRoutes.post("/:slug/agent/test-chat", withCompany("knowledge.read"), async 
         agentName: connection?.reply_agent_name || "the support agent",
         persona: settings.persona,
         question: last.text,
-        transcript: lines.slice(0, -1).slice(-12),
+        transcript: lines.slice(0, -1).filter((line) => !detectSilenceIntent(line.text)).slice(-12),
         versionId: version.id,
       });
   if (result && !result.ok) throw badRequest(result.error);
   const draft = result?.ok ? result.draft : null;
   const gate = decide({
     mode: "live",
+    question: last.text,
     threshold: settings.confidence_threshold,
     handoffIntent,
-    draft: draft ? { answer: draft.answer, confidence: draft.confidence, citations: draft.citations.map((x) => x.chunkId), needsHuman: draft.needsHuman, reason: draft.reason } : null,
+    draft: draft ? { answer: draft.answer, confidence: draft.confidence, citations: draft.citations.map((x) => x.chunkId), needsHuman: draft.needsHuman, conversationalVerified: draft.conversationalVerified, reason: draft.reason } : null,
   });
-  return c.json({ draft, gate, version: { id: version.id, number: version.number, status: version.status }, retrieved: result?.ok ? result.chunks.map((x) => ({ id: x.id, heading: x.heading, score: Number(x.score.toFixed(3)) })) : [] });
+  return c.json({ draft, gate, typingPace: settings.typing_pace, version: { id: version.id, number: version.number, status: version.status }, retrieved: result?.ok ? result.chunks.map((x) => ({ id: x.id, heading: x.heading, score: Number(x.score.toFixed(3)) })) : [] });
 });
 
 // ---- Golden tests ---------------------------------------------------------------------------

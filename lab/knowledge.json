@@ -1,0 +1,8 @@
+{
+  "title": "Sample support knowledge, test data only",
+  "documents": [
+    {"title":"Subscription plans","content":"Apollo offers subscription plans for 1, 3, 6, or 12 months. Sample test prices are $24.99 for 1 month, $51.99 for 3 months, $89.99 for 6 months, and $159.90 for 12 months, in U.S. dollars. All plans include the same content and allow up to five simultaneous connections. Subscriptions do not auto-renew. A free 10-day trial with limited access is available. It requires no credit card and has no automatic charges. Only one trial is allowed per customer."},
+    {"title":"Resetting a password","content":"To reset your password, open the Apollo login page and select Forgot Password. Enter the email address used to sign up and submit the request. A password reset link will be sent to that email address. Open the email and follow the link to choose a new password. If the email is missing, check your spam or junk folder and confirm you entered the same email address used for the account. Support cannot see an account balance or change a customer's password through this chat."},
+    {"title":"Device clarification","content":"Before giving installation instructions, ask which device and application the customer uses. Supported devices include Amazon Firestick, Android TV, Apple TV, iPhone and iPad. Samsung and LG native TV apps and Roku are not supported. Use a compatible external streaming device instead. Do not guess the device from a customer's description of their TV."}
+  ]
+}

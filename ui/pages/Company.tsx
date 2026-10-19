@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useParams } from "react-router";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useParams } from "react-router";
 import { can, type Permission } from "../../shared/rbac";
 import type { CompanyDetail, CompanySummary } from "../../shared/types";
 import { api } from "../api";
@@ -22,15 +22,38 @@ const NAV: Array<{ to: string; label: string; icon: IconName; end?: boolean }> =
   { to: "/conversations", label: "Conversations", icon: "chat" },
   { to: "/knowledge", label: "Knowledge", icon: "book" },
   { to: "/test", label: "Test chat", icon: "flask" },
+  { to: "/analysis", label: "Analysis", icon: "sparkles" },
   { to: "/activity", label: "Activity", icon: "activity" },
   { to: "/settings", label: "Settings", icon: "settings" },
 ];
 
 export function Company() {
   const { slug = "" } = useParams();
+  const location = useLocation();
+  const inboxPage = location.pathname.startsWith(`/c/${slug}/conversations`);
   const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [others, setOthers] = useState<CompanySummary[]>([]);
   const [menu, setMenu] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const revealActive = () => {
+      const nav = navigationRef.current;
+      const active = nav?.querySelector<HTMLElement>("a.active");
+      if (nav && active) nav.scrollLeft = active.offsetLeft - nav.offsetLeft - (nav.clientWidth - active.clientWidth) / 2;
+    };
+    const frame = requestAnimationFrame(revealActive);
+    window.addEventListener("resize", revealActive);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", revealActive); };
+  }, [location.pathname]);
+  useEffect(() => {
+    if (!menu) return;
+    const outside = (event: PointerEvent) => { if (!switcherRef.current?.contains(event.target as Node)) setMenu(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setMenu(false); };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [menu]);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -63,17 +86,17 @@ export function Company() {
   const nav = ({ isActive }: { isActive: boolean }) => (isActive ? "active" : "");
 
   return (
-    <div>
+    <div className={inboxPage ? "company-shell inbox-shell" : "company-shell"}>
       <header className="bar">
         <Link to="/" className="brand"><span className="mark">Q</span>FreshQA</Link>
-        <div className="switcher">
+        <div className="switcher" ref={switcherRef}>
           <button type="button" onClick={() => setMenu((m) => !m)} aria-expanded={menu}>
             <Avatar name={company?.name ?? "…"} size="sm" />
             <span className="truncate" style={{ maxWidth: 180 }}>{company?.name ?? "Loading…"}</span>
             <Icon name="chevronDown" size={15} />
           </button>
           {menu && (
-            <div className="menu" onMouseLeave={() => setMenu(false)}>
+            <div className="menu">
               {others.map((c) => (
                 <Link key={c.id} to={`/c/${c.slug}`} onClick={() => setMenu(false)}><Avatar name={c.name} size="sm" /><span className="truncate grow">{c.name}</span>{c.slug === slug && <Icon name="check" size={14} />}</Link>
               ))}
@@ -82,7 +105,7 @@ export function Company() {
             </div>
           )}
         </div>
-        <nav>
+        <nav ref={navigationRef} aria-label="Company navigation">
           {NAV.map((item) => (
             <NavLink key={item.to} to={`/c/${slug}${item.to}`} end={item.end} className={nav}>
               {item.label}
@@ -91,11 +114,11 @@ export function Company() {
           ))}
         </nav>
         <div className="right">
-          <Link className="btn sm" to={`/c/${slug}/test`}><Icon name="flask" /> Try the agent</Link>
+
           <AccountMenu />
         </div>
       </header>
-      <main className="main page" key={slug}>
+      <main className={inboxPage ? "main page conversation-main" : "main page"} key={slug}>
         {company ? (
           <CompanyContext.Provider value={{ company, reload, allowed }}>
             <Outlet />

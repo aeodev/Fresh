@@ -15,6 +15,7 @@ export type StructuredRequest = {
   input: string;
   model?: string;
   reasoningEffort?: "none" | "low" | "medium";
+  verbosity?: "low" | "medium" | "high";
   timeoutMs?: number;
 };
 
@@ -54,7 +55,7 @@ export async function structuredCompletion<T>(env: Env, request: StructuredReque
         reasoning: { effort: request.reasoningEffort ?? "low" },
         instructions: request.instructions,
         input: request.input,
-        text: { verbosity: "low", format: { type: "json_schema", name: request.schemaName, strict: true, schema: request.schema } },
+        text: { verbosity: request.verbosity ?? "low", format: { type: "json_schema", name: request.schemaName, strict: true, schema: request.schema } },
       }),
     });
     const data = (await response.json().catch(() => ({}))) as {

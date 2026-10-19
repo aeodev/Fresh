@@ -51,6 +51,35 @@ export async function getDraftVersion(db: D1Database, companyId: string): Promis
   return row ? toVersion(row) : null;
 }
 
+type DocumentSnapshot = { title: string; source_type: string; content: string };
+export type KnowledgeChanges = { added: string[]; updated: string[]; removed: string[]; unchanged: number; baseVersion: number | null };
+
+/** Compare content rather than copied document IDs, so a draft cloned from live starts with zero changes. */
+export async function versionChanges(db: D1Database, companyId: string, version: KnowledgeVersion): Promise<KnowledgeChanges> {
+  const base = version.status === "draft"
+    ? await getActiveVersion(db, companyId)
+    : await one<VersionRow>(db, `${VERSION_SELECT} WHERE v.company_id = ? AND v.number < ? ORDER BY v.number DESC LIMIT 1`, companyId, version.number);
+  const [currentDocs, baseDocs] = await Promise.all([
+    all<DocumentSnapshot>(db, "SELECT title, source_type, content FROM knowledge_docs WHERE company_id = ? AND version_id = ?", companyId, version.id),
+    base ? all<DocumentSnapshot>(db, "SELECT title, source_type, content FROM knowledge_docs WHERE company_id = ? AND version_id = ?", companyId, base.id) : Promise.resolve([]),
+  ]);
+  const byTitle = (docs: DocumentSnapshot[]) => new Map(docs.map((doc) => [`${doc.source_type}\u0000${doc.title.toLowerCase()}`, doc]));
+  const old = byTitle(baseDocs);
+  const now = byTitle(currentDocs);
+  const added: string[] = [];
+  const updated: string[] = [];
+  const removed: string[] = [];
+  let unchanged = 0;
+  for (const [key, doc] of now) {
+    const previous = old.get(key);
+    if (!previous) added.push(doc.title);
+    else if (previous.content !== doc.content) updated.push(doc.title);
+    else unchanged += 1;
+  }
+  for (const [key, doc] of old) if (!now.has(key)) removed.push(doc.title);
+  return { added, updated, removed, unchanged, baseVersion: base?.number ?? null };
+}
+
 /** New draft, optionally seeded with a copy of another version's docs and chunks (embeddings included, so no cost). */
 export async function createDraft(db: D1Database, companyId: string, userId: string, fromVersionId: string | null, title: string): Promise<KnowledgeVersion> {
   const last = await one<{ n: number | null }>(db, "SELECT MAX(number) AS n FROM knowledge_versions WHERE company_id = ?", companyId);
@@ -107,6 +136,23 @@ export async function addDoc(env: Env, input: { companyId: string; versionId: st
   return { docId, chunkCount: chunks.length, embedded: Boolean(vectors) };
 }
 
+/** Re-index a draft document. D1 applies content and chunk changes together. */
+export async function replaceDoc(env: Env, input: { companyId: string; versionId: string; docId: string; title: string; content: string }) {
+  const db = env.DB;
+  const chunks = chunkDocument(input.title, input.content);
+  const vectors = await embedTexts(env, chunks.map((c) => `${c.heading}\n${c.text}`));
+  await batch(db, [
+    { sql: "UPDATE knowledge_docs SET title = ?, content = ?, char_count = ? WHERE id = ? AND version_id = ? AND company_id = ?", params: [input.title, input.content, input.content.length, input.docId, input.versionId, input.companyId] },
+    { sql: "DELETE FROM knowledge_chunks WHERE doc_id = ? AND version_id = ?", params: [input.docId, input.versionId] },
+    ...chunks.map((chunk, index) => ({
+      sql: "INSERT INTO knowledge_chunks (id, version_id, company_id, doc_id, ordinal, heading, text, embedding) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      params: [newId("kc"), input.versionId, input.companyId, input.docId, chunk.ordinal, chunk.heading, chunk.text, vectors ? vectorToBlob(vectors[index]) : null],
+    })),
+    { sql: "UPDATE knowledge_versions SET chunk_count = (SELECT COUNT(*) FROM knowledge_chunks WHERE version_id = ?) WHERE id = ?", params: [input.versionId, input.versionId] },
+  ]);
+  return { docId: input.docId, chunkCount: chunks.length, embedded: Boolean(vectors) };
+}
+
 export async function deleteDoc(db: D1Database, versionId: string, docId: string) {
   await run(db, "DELETE FROM knowledge_chunks WHERE version_id = ? AND doc_id = ?", versionId, docId);
   await run(db, "DELETE FROM knowledge_docs WHERE version_id = ? AND id = ?", versionId, docId);
@@ -127,8 +173,8 @@ export async function activateVersion(db: D1Database, companyId: string, version
 }
 
 export async function loadChunks(db: D1Database, versionId: string): Promise<ChunkForRetrieval[]> {
-  const rows = await all<{ id: string; doc_id: string; heading: string; text: string; embedding: ArrayBuffer | null }>(db, "SELECT id, doc_id, heading, text, embedding FROM knowledge_chunks WHERE version_id = ?", versionId);
-  return rows.map((r) => ({ id: r.id, docId: r.doc_id, heading: r.heading, text: r.text, embedding: blobToVector(r.embedding) }));
+  const rows = await all<{ id: string; doc_id: string; ordinal: number; heading: string; text: string; embedding: ArrayBuffer | null }>(db, "SELECT id, doc_id, ordinal, heading, text, embedding FROM knowledge_chunks WHERE version_id = ?", versionId);
+  return rows.map((r) => ({ id: r.id, docId: r.doc_id, ordinal: r.ordinal, heading: r.heading, text: r.text, embedding: blobToVector(r.embedding) }));
 }
 
 export async function previewChunks(db: D1Database, versionId: string, docId: string | null, limit = 50) {

@@ -1,0 +1,7 @@
+[Unit]
+Description=FreshQA reconciliation every 10 minutes
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=10min
+[Install]
+WantedBy=timers.target

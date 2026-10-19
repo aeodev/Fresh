@@ -26,6 +26,7 @@ export async function ingestEvent(env: Env, companyId: string, connection: Conne
     id: conversationId,
     freshchatStatus: event.status,
     assignedAgentId: event.assignedAgentId,
+    replaceAssignment: event.kind === "assignment",
     userId: event.userId,
     customerName: event.customerName,
   });
@@ -35,7 +36,10 @@ export async function ingestEvent(env: Env, companyId: string, connection: Conne
   switch (event.kind) {
     case "customer_message":
       wake = "customer_message";
-      if (existing?.state === "resolved") await setState(db, companyId, conversationId, "agent", "Customer wrote again");
+      if (existing?.state === "resolved") {
+        await setState(db, companyId, conversationId, "human", "Customer wrote again. Turn on FreshQA from the sidebar to test.");
+        if (!event.status) await db.prepare("UPDATE conversations SET freshchat_status = 'reopened' WHERE company_id = ? AND id = ?").bind(companyId, conversationId).run();
+      }
       break;
     case "agent_message": {
       // A reply from anyone other than our reply agent means a teammate is handling this chat.
@@ -47,7 +51,8 @@ export async function ingestEvent(env: Env, companyId: string, connection: Conne
       await setState(db, companyId, conversationId, "resolved", "Resolved in Freshchat");
       break;
     case "reopened":
-      await setState(db, companyId, conversationId, "agent", "Reopened in Freshchat");
+      if (existing?.state === "resolved") await setState(db, companyId, conversationId, "human", "Reopened in Freshchat. Turn on FreshQA from the sidebar to test.");
+      if (!event.status) await db.prepare("UPDATE conversations SET freshchat_status = 'reopened' WHERE company_id = ? AND id = ?").bind(companyId, conversationId).run();
       wake = "customer_message";
       break;
     case "conversation_update":

@@ -1,10 +1,17 @@
 {
   "name": "freshqa-sidebar",
-  "version": "2.0.0",
+  "version": "2.0.3",
   "private": true,
+  "type": "module",
   "description": "FreshQA sidebar for the Freshchat Team Inbox: shows who owns the chat and lets agents take over or hand back.",
   "scripts": {
+    "fdk-unit-test": "vitest run --coverage",
     "validate": "fdk validate",
     "pack": "fdk pack --skip-coverage"
+  },
+  "devDependencies": {
+    "@freshworks/fdk": "https://cdn.freshdev.io/fdk/v10.1.9.tgz",
+    "@vitest/coverage-v8": "^4.1.11",
+    "vitest": "^4.1.11"
   }
 }
